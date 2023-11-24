@@ -20,7 +20,7 @@ jobs:
           - macos-latest
           - ubuntu-latest
         qt_ver: 
-          - 6.6.0
+          - 6.6.1
 
     steps:
       - name: Install Qt
