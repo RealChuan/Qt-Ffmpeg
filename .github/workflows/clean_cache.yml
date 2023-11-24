@@ -1,8 +1,8 @@
-name: Cleanup Caches By A Branch
+name: Cleanup caches by a branch
 on:
-  pull_request:
-    types:
-      - closed
+  # 每周一 0 点触发
+  schedule:
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       contents: read
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: |

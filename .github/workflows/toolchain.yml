@@ -1,9 +1,10 @@
-name: Build Toolchain
+name: Build toolchain
 
 on: 
-  # 每周一 0 点触发
-  schedule:
-    - cron: '0 0 * * 1'
+  # 清理 Cache 后触发
+  workflow_run: 
+    workflows: [Cleanup caches by a branch]
+    types: completed
   # 手动触发
   workflow_dispatch:
 
@@ -28,7 +29,7 @@ jobs:
         with:
           version: ${{ matrix.qt_ver }}
           install-deps: 'true'
-          modules: 'qt5compat addons.qtnetworkauth addons.qtmultimedia addons.qtimageformats'
+          modules: 'qt5compat qtnetworkauth qtmultimedia qtimageformats'
           cache: 'true'
 
       - name: Install dependencies on windows
@@ -59,10 +60,16 @@ jobs:
           gcc --version
           vcpkg install breakpad ffmpeg[opengl,ass,bzip2,freetype,fribidi,zlib,gpl] --triplet x64-linux
 
-      - name: cache vcpkg
+      - name: cache windows vcpkg
+        if: startsWith(matrix.os, 'windows')
         uses: actions/cache/save@v3
-        with:
-          path: |
-            C:\vcpkg\installed
-            /usr/local/share/vcpkg/installed
-          key: ${{ runner.os }}-vcpkg-installed-${{ matrix.os }}-${{ github.sha }}
+        with: 
+          path: C:\vcpkg\installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ matrix.os }}
+      - name: cache macos or ubuntu vcpkg
+        if: startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'ubuntu')
+        uses: actions/cache/save@v3
+        with: 
+          path: /usr/local/share/vcpkg/installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ matrix.os }}
+
