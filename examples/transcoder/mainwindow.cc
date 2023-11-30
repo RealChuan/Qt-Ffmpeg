@@ -118,7 +118,7 @@ public:
         bool audioSet = false;
         bool videoSet = false;
         auto codecs = Ffmpeg::getFileCodecInfo(filePath);
-        for (const auto &codec : qAsConst(codecs)) {
+        for (const auto &codec : std::as_const(codecs)) {
             if (audioSet && videoSet) {
                 break;
             }

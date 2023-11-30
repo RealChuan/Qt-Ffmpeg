@@ -28,8 +28,6 @@ Packet::Packet()
     if (!d_ptr->packet) {
         qWarning() << "Could not allocate packet";
     }
-
-    av_init_packet(d_ptr->packet);
 }
 
 Packet::Packet(const Packet &other)

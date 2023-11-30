@@ -122,11 +122,11 @@ AudioFrameConverter::AudioFrameConverter(CodecContext *codecCtx,
     d_ptr->format = format;
     d_ptr->avSampleFormat = getAVSampleFormat(d_ptr->format.sampleFormat());
     auto *avCodecCtx = codecCtx->avCodecCtx();
-    AVChannelLayout channelLayout = {AV_CHANNEL_ORDER_UNSPEC};
-    av_channel_layout_default(&channelLayout, d_ptr->format.channelCount());
-    // av_channel_layout_from_mask(&channelLayout, getChannelLayout(d_ptr->format.channelConfig()));
+    AVChannelLayout chLayout = {AV_CHANNEL_ORDER_UNSPEC};
+    av_channel_layout_default(&chLayout, d_ptr->format.channelCount());
+    // av_channel_layout_from_mask(&chLayout, getChannelLayout(d_ptr->format.channelConfig()));
     auto ret = swr_alloc_set_opts2(&d_ptr->swrContext,
-                                   &channelLayout,
+                                   &chLayout,
                                    d_ptr->avSampleFormat,
                                    d_ptr->format.sampleRate(),
                                    &avCodecCtx->ch_layout,

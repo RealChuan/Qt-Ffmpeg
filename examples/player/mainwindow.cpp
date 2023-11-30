@@ -416,7 +416,7 @@ void MainWindow::onProcessEvents()
 
             auto *tracksEvent = dynamic_cast<Ffmpeg::MediaTrackEvent *>(eventPtr.data());
             auto tracks = tracksEvent->tracks();
-            for (const auto &track : qAsConst(tracks)) {
+            for (const auto &track : std::as_const(tracks)) {
                 std::unique_ptr<QAction> actionPtr(new QAction(track.info(), this));
                 actionPtr->setProperty("index", track.index);
                 actionPtr->setCheckable(true);

@@ -64,11 +64,9 @@ auto init_filter(TranscodeContext *transcodeContext, const char *filter_spec, Fr
                        reinterpret_cast<uint8_t *>(&enc_ctx->sample_fmt),
                        sizeof(enc_ctx->sample_fmt),
                        AV_OPT_SEARCH_CHILDREN);
-        av_opt_set_bin(avFilterContext,
-                       "channel_layouts",
-                       reinterpret_cast<uint8_t *>(&enc_ctx->channel_layout),
-                       sizeof(enc_ctx->channel_layout),
-                       AV_OPT_SEARCH_CHILDREN);
+        char buf[64] = {0};
+        av_channel_layout_describe(&enc_ctx->ch_layout, buf, sizeof(buf));
+        av_opt_set(avFilterContext, "ch_layouts", buf, AV_OPT_SEARCH_CHILDREN);
     } break;
     default: return false;
     }
@@ -356,7 +354,7 @@ public:
         QSharedPointer<Frame> framePtr(new Frame);
         auto *frame = framePtr->avFrame();
         frame->nb_samples = frame_size;
-        frame->channel_layout = enc_ctx->channel_layout;
+        av_channel_layout_copy(&frame->ch_layout, &enc_ctx->ch_layout);
         frame->format = enc_ctx->sample_fmt;
         frame->sample_rate = enc_ctx->sample_rate;
         if (!framePtr->getBuffer()) {

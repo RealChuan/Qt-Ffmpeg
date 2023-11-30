@@ -35,7 +35,7 @@ AudioFifo::AudioFifo(CodecContext *ctx, QObject *parent)
     , d_ptr(new AudioFifoPrivtate(this))
 {
     auto avCodecCtx = ctx->avCodecCtx();
-    d_ptr->audioFifo = av_audio_fifo_alloc(avCodecCtx->sample_fmt, ctx->channels(), 1);
+    d_ptr->audioFifo = av_audio_fifo_alloc(avCodecCtx->sample_fmt, ctx->chLayout().nb_channels, 1);
     Q_ASSERT(nullptr != d_ptr->audioFifo);
 }
 
