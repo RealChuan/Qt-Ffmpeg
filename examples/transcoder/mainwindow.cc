@@ -75,7 +75,7 @@ public:
         fpsTimer = new QTimer(q_ptr);
     }
 
-    QGroupBox *initVideoSetting()
+    QGroupBox *initVideoSetting() const
     {
         auto layout1 = new QHBoxLayout;
         layout1->addWidget(new QLabel(tr("Width:"), q_ptr));
@@ -96,7 +96,7 @@ public:
         return groupBox;
     }
 
-    QGroupBox *invalidSetting()
+    QGroupBox *invalidSetting() const
     {
         auto groupBox = new QGroupBox(tr("Invalid setting"), q_ptr);
         auto layout = new QHBoxLayout(groupBox);
@@ -155,7 +155,7 @@ public:
         }
     }
 
-    void calBitrate()
+    void calBitrate() const
     {
         auto w = widthLineEdit->text().toInt();
         auto h = heightLineEdit->text().toInt();

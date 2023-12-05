@@ -49,10 +49,10 @@ public:
             }
         }
         if (codec->ch_layouts != nullptr) {
-            const auto *p = codec->ch_layouts;
-            while (p->nb_channels) {
-                supported_ch_layouts.append(*p);
-                p++;
+            const auto *ch_layout = codec->ch_layouts;
+            while (ch_layout->nb_channels != 0) {
+                supported_ch_layouts.append(*ch_layout);
+                ch_layout++;
             }
         }
     }
@@ -304,7 +304,7 @@ auto CodecContext::receiveFrame(Frame *frame) -> bool
         avFrame->ch_layout = d_ptr->codecCtx->ch_layout;
         return true;
     }
-    if (ret != -11) { // Resource temporarily unavailable
+    if (ret != AVERROR(EAGAIN)) { // Resource temporarily unavailable
         SET_ERROR_CODE(ret);
     }
     return false;

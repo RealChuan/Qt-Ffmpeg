@@ -233,4 +233,11 @@ auto getAudioFormatFromCodecCtx(CodecContext *codecCtx, int &sampleSize) -> QAud
     return autioFormat;
 }
 
+auto getAVChannelLayoutDescribe(const AVChannelLayout &chLayout) -> QString
+{
+    char buf[64] = {0};
+    av_channel_layout_describe(&chLayout, buf, sizeof(buf));
+    return QString::fromUtf8(buf);
+}
+
 } // namespace Ffmpeg
