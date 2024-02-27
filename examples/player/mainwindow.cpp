@@ -424,7 +424,7 @@ void MainWindow::onProcessEvents()
                 if (track.selected) {
                     actionPtr->setChecked(true);
                 }
-                switch (track.type) {
+                switch (track.mediaType) {
                 case AVMEDIA_TYPE_AUDIO: {
                     auto *action = actionPtr.release();
                     d_ptr->audioTracksMenuPtr->addAction(action);

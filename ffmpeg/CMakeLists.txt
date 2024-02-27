@@ -87,8 +87,10 @@ set(PROJECT_SOURCES
     subtitledecoder.h
     subtitledisplay.cc
     subtitledisplay.hpp
-    transcode.cc
-    transcode.hpp
+    transcoder.cc
+    transcoder.hpp
+    transcodercontext.cc
+    transcodercontext.hpp
     videodecoder.cpp
     videodecoder.h
     videodisplay.cc

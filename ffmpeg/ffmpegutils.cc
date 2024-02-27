@@ -151,27 +151,6 @@ auto compareAVRational(const AVRational &a, const AVRational &b) -> bool
     return a.den == b.den && a.num == b.num;
 }
 
-auto getFileCodecInfo(const QString &filePath) -> QVector<CodecInfo>
-{
-    QVector<CodecInfo> codecs{};
-    QScopedPointer<FormatContext> formatContextPtr(new FormatContext);
-    auto ret = formatContextPtr->openFilePath(filePath);
-    if (!ret) {
-        return codecs;
-    }
-    formatContextPtr->findStream();
-    auto stream_num = formatContextPtr->streams();
-    for (int i = 0; i < stream_num; i++) {
-        auto *codecpar = formatContextPtr->stream(i)->codecpar;
-        codecs.append({codecpar->codec_type,
-                       codecpar->codec_id,
-                       avcodec_get_name(codecpar->codec_id),
-                       {codecpar->width, codecpar->height}});
-    }
-    formatContextPtr->dumpFormat();
-    return codecs;
-}
-
 auto getCodecQuantizer(const QString &codecname) -> QPair<int, int>
 {
     QScopedPointer<AVContextInfo> contextInfoPtr(new AVContextInfo);
@@ -182,9 +161,9 @@ auto getCodecQuantizer(const QString &codecname) -> QPair<int, int>
     return quantizer;
 }
 
-auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QStringList
+auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QMap<AVCodecID, QString>
 {
-    QStringList codecnames{};
+    QMap<AVCodecID, QString> codecnames;
     const AVCodecDescriptor **codecs{};
     auto nb_codecs = get_codecs_sorted(&codecs);
 
@@ -203,9 +182,7 @@ auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QStringList
                 continue;
             }
             const auto *name = codec->name;
-            if (!codecnames.contains(name)) {
-                codecnames.append(name);
-            }
+            codecnames.insert(codec->id, codec->name);
             auto str = QString::asprintf("%-20s %s",
                                          name,
                                          codec->long_name != nullptr ? codec->long_name : "");

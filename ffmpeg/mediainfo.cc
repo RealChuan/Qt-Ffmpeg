@@ -15,20 +15,21 @@ StreamInfo::StreamInfo(struct AVStream *stream)
     auto *codecpar = stream->codecpar;
     auto timebase = av_q2d(stream->time_base);
 
-    type = codecpar->codec_type;
-    typeStr = av_get_media_type_string(type);
+    mediaType = codecpar->codec_type;
+    mediaTypeText = av_get_media_type_string(mediaType);
     startTime = QTime::fromMSecsSinceStartOfDay(stream->start_time * timebase * 1000)
                     .toString("hh:mm:ss.zzz");
     duration = QTime::fromMSecsSinceStartOfDay(stream->duration * timebase * 1000)
                    .toString("hh:mm:ss.zzz");
-    codec = avcodec_get_name(codecpar->codec_id);
+    codecId = codecpar->codec_id;
+    codecName = avcodec_get_name(codecId);
     nbFrames = stream->nb_frames;
     bitRate = codecpar->bit_rate;
     streamSize = stream->duration * timebase * bitRate / 8;
-    profile = avcodec_profile_name(codecpar->codec_id, codecpar->profile);
+    profile = avcodec_profile_name(codecId, codecpar->profile);
     level = codecpar->level;
 
-    switch (type) {
+    switch (mediaType) {
     case AVMEDIA_TYPE_AUDIO: {
         format = av_get_sample_fmt_name(static_cast<AVSampleFormat>(codecpar->format));
         chLayout = getAVChannelLayoutDescribe(codecpar->ch_layout);
@@ -63,15 +64,15 @@ auto StreamInfo::toJson() const -> QJsonObject
 {
     QJsonObject json;
     json.insert("Index", index);
-    json.insert("MediaType", typeStr);
+    json.insert("MediaType", mediaTypeText);
     json.insert("StartTime", startTime);
     json.insert("Duration", duration);
-    json.insert("Codec", codec);
+    json.insert("Codec", codecName);
     json.insert("NbFrames", nbFrames);
     json.insert("Format", format);
     json.insert("BitRate", Utils::convertBytesToString(bitRate) + "/s");
     json.insert("StreamSize", Utils::convertBytesToString(streamSize));
-    switch (type) {
+    switch (mediaType) {
     case AVMEDIA_TYPE_AUDIO:
         json.insert("ChLayout", chLayout);
         json.insert("SampleRate", sampleRate);
@@ -110,7 +111,7 @@ auto StreamInfo::toJson() const -> QJsonObject
 
 auto StreamInfo::info() const -> QString
 {
-    QString text = codec;
+    QString text = codecName;
     auto lang = metadatas.value("language");
     auto title = metadatas.value("title");
     if (!lang.isEmpty()) {
@@ -124,7 +125,7 @@ auto StreamInfo::info() const -> QString
     }
     text += "-" + format;
 
-    switch (type) {
+    switch (mediaType) {
     case AVMEDIA_TYPE_AUDIO: text += "-" + chLayout + "-" + QString::number(sampleRate); break;
     case AVMEDIA_TYPE_VIDEO:
         text += "-" + QString::number(frameRate) + "-" + QString::number(size.width()) + "x"

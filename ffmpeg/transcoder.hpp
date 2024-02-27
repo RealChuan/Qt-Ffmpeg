@@ -1,9 +1,8 @@
-#ifndef TRANSCODE_HPP
-#define TRANSCODE_HPP
+#ifndef TRANSCODER_H
+#define TRANSCODER_H
 
-#include "ffmepg_global.h"
+#include <ffmpeg/event/event.hpp>
 
-#include <QSize>
 #include <QThread>
 
 extern "C" {
@@ -14,16 +13,18 @@ namespace Ffmpeg {
 
 class AVError;
 class Frame;
-class FFMPEG_EXPORT Transcode : public QThread
+class FFMPEG_EXPORT Transcoder : public QThread
 {
     Q_OBJECT
 public:
-    explicit Transcode(QObject *parent = nullptr);
-    ~Transcode() override;
+    explicit Transcoder(QObject *parent = nullptr);
+    ~Transcoder() override;
 
     void setUseGpuDecode(bool useGpu);
 
     void setInFilePath(const QString &filePath);
+    auto parseInputFile() -> bool;
+
     void setOutFilePath(const QString &filepath);
 
     void setAudioEncodecID(AVCodecID codecID);
@@ -56,21 +57,24 @@ public:
 
     auto fps() -> float;
 
+    void setPropertyEventQueueMaxSize(size_t size);
+    [[nodiscard]] auto propertEventyQueueMaxSize() const -> size_t;
+    [[nodiscard]] auto propertyChangeEventSize() const -> size_t;
+    auto takePropertyChangeEvent() -> PropertyChangeEventPtr;
+
 signals:
     void error(const Ffmpeg::AVError &avError);
     void progressChanged(qreal); // 0.XXXX
+    void eventIncrease();
 
 protected:
     void run() override;
 
 private:
-    void buildConnect() const;
-    void loop();
-
-    class TranscodePrivate;
-    QScopedPointer<TranscodePrivate> d_ptr;
+    class TranscoderPrivate;
+    QScopedPointer<TranscoderPrivate> d_ptr;
 };
 
 } // namespace Ffmpeg
 
-#endif // TRANSCODE_HPP
+#endif // TRANSCODER_H

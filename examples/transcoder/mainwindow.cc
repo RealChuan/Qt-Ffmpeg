@@ -1,8 +1,10 @@
 #include "mainwindow.hpp"
 
 #include <ffmpeg/averror.h>
+#include <ffmpeg/event/trackevent.hpp>
+#include <ffmpeg/event/valueevent.hpp>
 #include <ffmpeg/ffmpegutils.hpp>
-#include <ffmpeg/transcode.hpp>
+#include <ffmpeg/transcoder.hpp>
 
 #include <QtWidgets>
 
@@ -11,12 +13,19 @@
 class MainWindow::MainWindowPrivate
 {
 public:
-    MainWindowPrivate(QWidget *parent)
+    explicit MainWindowPrivate(QWidget *parent)
         : q_ptr(parent)
     {
-        transcode = new Ffmpeg::Transcode(q_ptr);
+        transcode = new Ffmpeg::Transcoder(q_ptr);
 
         inTextEdit = new QTextEdit(q_ptr);
+        durationLabel = new QLabel("-", q_ptr);
+        startTimeEdit = new QTimeEdit(q_ptr);
+        startTimeEdit->setDisplayFormat("hh:mm:ss");
+        endTimeEdit = new QTimeEdit(q_ptr);
+        endTimeEdit->setDisplayFormat("hh:mm:ss");
+        outDurationLabel = new QLabel("-", q_ptr);
+
         subtitleTextEdit = new QTextEdit(q_ptr);
         outTextEdit = new QTextEdit(q_ptr);
 
@@ -24,16 +33,21 @@ public:
         audioCodecCbx->setView(new QListView(audioCodecCbx));
         audioCodecCbx->setMaxVisibleItems(10);
         audioCodecCbx->setStyleSheet("QComboBox {combobox-popup:0;}");
-        audioCodecCbx->addItems(Ffmpeg::getCurrentSupportCodecs(AVMEDIA_TYPE_AUDIO, true));
+        auto audioCodecs = Ffmpeg::getCurrentSupportCodecs(AVMEDIA_TYPE_AUDIO, true);
+        for (auto iter = audioCodecs.cbegin(); iter != audioCodecs.cend(); ++iter) {
+            audioCodecCbx->addItem(iter.value(), iter.key());
+        }
         audioCodecCbx->setCurrentIndex(audioCodecCbx->findData(AV_CODEC_ID_AAC));
-        audioCodecCbx->setCurrentText(avcodec_get_name(AV_CODEC_ID_AAC));
 
         videoCodecCbx = new QComboBox(q_ptr);
         videoCodecCbx->setView(new QListView(videoCodecCbx));
         videoCodecCbx->setMaxVisibleItems(10);
         videoCodecCbx->setStyleSheet("QComboBox {combobox-popup:0;}");
-        videoCodecCbx->addItems(Ffmpeg::getCurrentSupportCodecs(AVMEDIA_TYPE_VIDEO, true));
-        videoCodecCbx->setCurrentText(avcodec_get_name(AV_CODEC_ID_H264));
+        auto videoCodecs = Ffmpeg::getCurrentSupportCodecs(AVMEDIA_TYPE_VIDEO, true);
+        for (auto iter = videoCodecs.cbegin(); iter != videoCodecs.cend(); ++iter) {
+            videoCodecCbx->addItem(iter.value(), iter.key());
+        }
+        videoCodecCbx->setCurrentIndex(videoCodecCbx->findData(AV_CODEC_ID_H264));
 
         quailtySbx = new QSpinBox(q_ptr);
         quailtySbx->setRange(2, 31);
@@ -75,31 +89,31 @@ public:
         fpsTimer = new QTimer(q_ptr);
     }
 
-    QGroupBox *initVideoSetting() const
+    [[nodiscard]] auto initVideoSetting() const -> QGroupBox *
     {
-        auto layout1 = new QHBoxLayout;
+        auto *layout1 = new QHBoxLayout;
         layout1->addWidget(new QLabel(tr("Width:"), q_ptr));
         layout1->addWidget(widthLineEdit);
         layout1->addWidget(new QLabel(tr("height:"), q_ptr));
         layout1->addWidget(heightLineEdit);
         layout1->addWidget(keepAspectRatioCkb);
-        auto layout2 = new QHBoxLayout;
+        auto *layout2 = new QHBoxLayout;
         layout2->addWidget(new QLabel(tr("Min Bitrate:"), q_ptr));
         layout2->addWidget(videoMinBitrateLineEdit);
         layout2->addWidget(new QLabel(tr("Max Bitrate:"), q_ptr));
         layout2->addWidget(videoMaxBitrateLineEdit);
 
-        auto groupBox = new QGroupBox(tr("Video"), q_ptr);
-        auto layout = new QVBoxLayout(groupBox);
+        auto *groupBox = new QGroupBox(tr("Video"), q_ptr);
+        auto *layout = new QVBoxLayout(groupBox);
         layout->addLayout(layout1);
         layout->addLayout(layout2);
         return groupBox;
     }
 
-    QGroupBox *invalidSetting() const
+    [[nodiscard]] auto invalidSetting() const -> QGroupBox *
     {
-        auto groupBox = new QGroupBox(tr("Invalid setting"), q_ptr);
-        auto layout = new QHBoxLayout(groupBox);
+        auto *groupBox = new QGroupBox(tr("Invalid setting"), q_ptr);
+        auto *layout = new QHBoxLayout(groupBox);
         layout->addWidget(new QLabel(tr("Quality:"), q_ptr));
         layout->addWidget(quailtySbx);
         layout->addWidget(new QLabel(tr("Crf:"), q_ptr));
@@ -115,44 +129,8 @@ public:
 
     void initInputFileAttribute(const QString &filePath)
     {
-        bool audioSet = false;
-        bool videoSet = false;
-        auto codecs = Ffmpeg::getFileCodecInfo(filePath);
-        for (const auto &codec : std::as_const(codecs)) {
-            if (audioSet && videoSet) {
-                break;
-            }
-
-            switch (codec.mediaType) {
-            case AVMEDIA_TYPE_AUDIO:
-                if (!audioSet) {
-                    auto index = audioCodecCbx->findText(codec.name);
-                    if (index > 0) {
-                        audioCodecCbx->setCurrentText(codec.name);
-                        audioSet = true;
-                    }
-                }
-                break;
-            case AVMEDIA_TYPE_VIDEO:
-                if (!videoSet) {
-                    auto index = videoCodecCbx->findText(codec.name);
-                    if (index > 0) {
-                        videoCodecCbx->setCurrentText(codec.name);
-                    }
-                    videoSet = true;
-                    widthLineEdit->blockSignals(true);
-                    heightLineEdit->blockSignals(true);
-                    widthLineEdit->setText(QString::number(codec.size.width()));
-                    heightLineEdit->setText(QString::number(codec.size.height()));
-                    originalSize = codec.size;
-                    widthLineEdit->blockSignals(false);
-                    heightLineEdit->blockSignals(false);
-                    calBitrate();
-                }
-                break;
-            default: break;
-            }
-        }
+        transcode->setInFilePath(filePath);
+        transcode->parseInputFile();
     }
 
     void calBitrate() const
@@ -165,9 +143,14 @@ public:
 
     QWidget *q_ptr;
 
-    Ffmpeg::Transcode *transcode;
+    Ffmpeg::Transcoder *transcode;
 
     QTextEdit *inTextEdit;
+    QLabel *durationLabel;
+    QTimeEdit *startTimeEdit;
+    QTimeEdit *endTimeEdit;
+    QLabel *outDurationLabel;
+
     QTextEdit *subtitleTextEdit;
     QTextEdit *outTextEdit;
 
@@ -200,10 +183,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupUI();
     buildConnect();
-    resize(700, 430);
+
+    resize(1000, 618);
 }
 
-MainWindow::~MainWindow() {}
+MainWindow::~MainWindow() = default;
 
 void MainWindow::onError(const Ffmpeg::AVError &avError)
 {
@@ -236,7 +220,7 @@ void MainWindow::onOpenInputFile()
     d_ptr->initInputFileAttribute(filePath);
 }
 
-void MainWindow::onCheckInputFile()
+void MainWindow::onResetConfig()
 {
     auto filePath = d_ptr->inTextEdit->toPlainText();
     if (filePath.isEmpty()) {
@@ -286,6 +270,17 @@ void MainWindow::onOpenOutputFile()
     d_ptr->outTextEdit->setPlainText(filePath);
 }
 
+void MainWindow::onRangeChanged()
+{
+    d_ptr->startTimeEdit->setMaximumTime(d_ptr->endTimeEdit->time());
+
+    auto time = QTime::fromMSecsSinceStartOfDay(
+        d_ptr->startTimeEdit->time().msecsTo(d_ptr->endTimeEdit->time()));
+    auto text = tr("Out Duration: %1").arg(time.toString("hh:mm:ss"));
+    d_ptr->outDurationLabel->setText(text);
+    d_ptr->outDurationLabel->setToolTip(text);
+}
+
 void MainWindow::onStart()
 {
     if (d_ptr->startButton->text() == tr("Start")) {
@@ -329,64 +324,129 @@ void MainWindow::onStart()
     }
 }
 
+void MainWindow::onProcessEvents()
+{
+    while (d_ptr->transcode->propertyChangeEventSize() > 0) {
+        auto eventPtr = d_ptr->transcode->takePropertyChangeEvent();
+        switch (eventPtr->type()) {
+        case Ffmpeg::PropertyChangeEvent::EventType::Duration: {
+            auto *durationEvent = dynamic_cast<Ffmpeg::DurationEvent *>(eventPtr.data());
+            auto duration = QTime::fromMSecsSinceStartOfDay(durationEvent->duration() / 1000);
+            auto durationText = duration.toString("hh:mm:ss");
+            d_ptr->durationLabel->setText(durationText);
+            d_ptr->durationLabel->setToolTip(durationText);
+            d_ptr->startTimeEdit->setTime({});
+            d_ptr->startTimeEdit->setMaximumTime(duration);
+            d_ptr->endTimeEdit->setTime(duration);
+            d_ptr->endTimeEdit->setMaximumTime(duration);
+        } break;
+        case Ffmpeg::PropertyChangeEvent::EventType::Position: {
+            // auto *positionEvent = dynamic_cast<Ffmpeg::PositionEvent *>(eventPtr.data());
+            // d_ptr->controlWidget->setPosition(positionEvent->position() / AV_TIME_BASE);
+        } break;
+        case Ffmpeg::PropertyChangeEvent::MediaTrack: {
+            bool audioSet = false;
+            bool videoSet = false;
+            auto *mediaTrackEvent = dynamic_cast<Ffmpeg::MediaTrackEvent *>(eventPtr.data());
+            auto tracks = mediaTrackEvent->tracks();
+            for (const auto &track : std::as_const(tracks)) {
+                switch (track.mediaType) {
+                case AVMEDIA_TYPE_AUDIO:
+                    if (!audioSet) {
+                        auto index = d_ptr->audioCodecCbx->findData(track.codecId);
+                        if (index > 0) {
+                            d_ptr->audioCodecCbx->setCurrentIndex(index);
+                            audioSet = true;
+                        }
+                    }
+                    break;
+                case AVMEDIA_TYPE_VIDEO:
+                    if (!videoSet) {
+                        auto index = d_ptr->videoCodecCbx->findData(track.codecId);
+                        if (index > 0) {
+                            d_ptr->videoCodecCbx->setCurrentIndex(index);
+                        }
+                        videoSet = true;
+                        d_ptr->widthLineEdit->blockSignals(true);
+                        d_ptr->heightLineEdit->blockSignals(true);
+                        d_ptr->widthLineEdit->setText(QString::number(track.size.width()));
+                        d_ptr->heightLineEdit->setText(QString::number(track.size.height()));
+                        d_ptr->originalSize = track.size;
+                        d_ptr->widthLineEdit->blockSignals(false);
+                        d_ptr->heightLineEdit->blockSignals(false);
+                        d_ptr->calBitrate();
+                    }
+                    break;
+                default: break;
+                }
+            }
+        } break;
+        default: break;
+        }
+    }
+}
+
 void MainWindow::setupUI()
 {
-    auto inBtn = new QToolButton(this);
-    inBtn->setText(tr("Open In"));
-    inBtn->setMinimumSize(BUTTON_SIZE);
-    connect(inBtn, &QToolButton::clicked, this, &MainWindow::onOpenInputFile);
-    auto checkInBtn = new QToolButton(this);
-    checkInBtn->setText(tr("Check In File"));
-    checkInBtn->setToolTip(tr("Enter the path manually and use it"));
-    checkInBtn->setMinimumSize(BUTTON_SIZE);
-    connect(checkInBtn, &QToolButton::clicked, this, &MainWindow::onCheckInputFile);
-    auto subtitleBtn = new QToolButton(this);
+    auto *fileMenu = new QMenu(tr("File"), this);
+    fileMenu->addAction(tr("Open In"), this, &MainWindow::onOpenInputFile);
+    fileMenu->addAction(tr("Reset Config"), this, &MainWindow::onResetConfig);
+    fileMenu->addSeparator();
+    fileMenu->addAction(tr("Exit"), qApp, &QApplication::quit, Qt::QueuedConnection);
+    menuBar()->addMenu(fileMenu);
+
+    auto *subtitleBtn = new QToolButton(this);
     subtitleBtn->setText(tr("Add Subtitle"));
     subtitleBtn->setMinimumSize(BUTTON_SIZE);
     connect(subtitleBtn, &QToolButton::clicked, this, &MainWindow::onOpenSubtitle);
-    auto outBtn = new QToolButton(this);
+    auto *outBtn = new QToolButton(this);
     outBtn->setText(tr("Open Out"));
     outBtn->setMinimumSize(BUTTON_SIZE);
     connect(outBtn, &QToolButton::clicked, this, &MainWindow::onOpenOutputFile);
 
-    auto inLayout = new QVBoxLayout;
-    inLayout->addWidget(inBtn);
-    inLayout->addWidget(checkInBtn);
+    auto *fileInfoLayout = new QHBoxLayout;
+    fileInfoLayout->addWidget(d_ptr->inTextEdit);
+    fileInfoLayout->addWidget(new QLabel(tr("Duration:"), this));
+    fileInfoLayout->addWidget(d_ptr->durationLabel);
+    fileInfoLayout->addWidget(new QLabel(tr("Range:"), this));
+    fileInfoLayout->addWidget(d_ptr->startTimeEdit);
+    fileInfoLayout->addWidget(new QLabel("-", this));
+    fileInfoLayout->addWidget(d_ptr->endTimeEdit);
+    fileInfoLayout->addWidget(d_ptr->outDurationLabel);
 
-    auto editLayout = new QGridLayout;
-    editLayout->addWidget(d_ptr->inTextEdit, 0, 0, 1, 1);
-    editLayout->addLayout(inLayout, 0, 1, 1, 1);
+    auto *editLayout = new QGridLayout;
     editLayout->addWidget(d_ptr->subtitleTextEdit, 1, 0, 1, 1);
     editLayout->addWidget(subtitleBtn, 1, 1, 1, 1);
     editLayout->addWidget(d_ptr->outTextEdit, 2, 0, 1, 1);
     editLayout->addWidget(outBtn, 2, 1, 1, 1);
 
-    auto groupLayout1 = new QHBoxLayout;
+    auto *groupLayout1 = new QHBoxLayout;
     groupLayout1->addWidget(new QLabel(tr("Audio Codec Name:"), this));
     groupLayout1->addWidget(d_ptr->audioCodecCbx);
     groupLayout1->addWidget(new QLabel(tr("Video Codec Name:"), this));
     groupLayout1->addWidget(d_ptr->videoCodecCbx);
-    auto groupBox = new QGroupBox(tr("Encoder Settings"), this);
-    auto groupLayout = new QVBoxLayout(groupBox);
+    auto *groupBox = new QGroupBox(tr("Encoder Settings"), this);
+    auto *groupLayout = new QVBoxLayout(groupBox);
     groupLayout->addLayout(groupLayout1);
     groupLayout->addWidget(d_ptr->invalidSetting());
     groupLayout->addWidget(d_ptr->initVideoSetting());
 
-    auto useGpuCheckBox = new QCheckBox(tr("GPU Decode"), this);
+    auto *useGpuCheckBox = new QCheckBox(tr("GPU Decode"), this);
     useGpuCheckBox->setToolTip(tr("GPU Decode"));
     useGpuCheckBox->setChecked(true);
     connect(useGpuCheckBox, &QCheckBox::clicked, this, [this, useGpuCheckBox] {
         d_ptr->transcode->setUseGpuDecode(useGpuCheckBox->isChecked());
     });
     d_ptr->transcode->setUseGpuDecode(useGpuCheckBox->isChecked());
-    auto displayLayout = new QHBoxLayout;
+    auto *displayLayout = new QHBoxLayout;
     displayLayout->addWidget(d_ptr->startButton);
     displayLayout->addWidget(useGpuCheckBox);
     displayLayout->addWidget(d_ptr->progressBar);
     displayLayout->addWidget(d_ptr->fpsLabel);
 
-    auto widget = new QWidget(this);
-    auto layout = new QVBoxLayout(widget);
+    auto *widget = new QWidget(this);
+    auto *layout = new QVBoxLayout(widget);
+    layout->addLayout(fileInfoLayout);
     layout->addLayout(editLayout);
     layout->addWidget(groupBox);
     layout->addLayout(displayLayout);
@@ -395,7 +455,15 @@ void MainWindow::setupUI()
 
 void MainWindow::buildConnect()
 {
-    connect(d_ptr->transcode, &Ffmpeg::Transcode::error, this, &MainWindow::onError);
+    connect(d_ptr->transcode,
+            &Ffmpeg::Transcoder::eventIncrease,
+            this,
+            &MainWindow::onProcessEvents);
+
+    connect(d_ptr->transcode, &Ffmpeg::Transcoder::error, this, &MainWindow::onError);
+
+    connect(d_ptr->startTimeEdit, &QTimeEdit::timeChanged, this, &MainWindow::onRangeChanged);
+    connect(d_ptr->endTimeEdit, &QTimeEdit::timeChanged, this, &MainWindow::onRangeChanged);
 
     connect(d_ptr->videoCodecCbx,
             &QComboBox::currentTextChanged,
@@ -437,10 +505,10 @@ void MainWindow::buildConnect()
     });
 
     connect(d_ptr->startButton, &QToolButton::clicked, this, &MainWindow::onStart);
-    connect(d_ptr->transcode, &Ffmpeg::Transcode::progressChanged, this, [this](qreal value) {
+    connect(d_ptr->transcode, &Ffmpeg::Transcoder::progressChanged, this, [this](qreal value) {
         d_ptr->progressBar->setValue(value * 100);
     });
-    connect(d_ptr->transcode, &Ffmpeg::Transcode::finished, this, [this] {
+    connect(d_ptr->transcode, &Ffmpeg::Transcoder::finished, this, [this] {
         if (d_ptr->startButton->text() == tr("Stop")) {
             d_ptr->startButton->click();
         }

@@ -269,7 +269,7 @@ auto FormatContext::audioTracks() const -> StreamInfos
     return d_ptr->audioTracks;
 }
 
-auto FormatContext::vidioTracks() const -> StreamInfos
+auto FormatContext::videoTracks() const -> StreamInfos
 {
     return d_ptr->videoTracks;
 }
