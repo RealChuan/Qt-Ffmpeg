@@ -19,7 +19,6 @@ SOURCES += \
     controlwidget.cc \
     main.cpp \
     mainwindow.cpp \
-    mediainfodialog.cc \
     openwebmediadialog.cc \
     playlistmodel.cpp \
     playlistview.cc \
@@ -32,7 +31,6 @@ HEADERS += \
     colorspacedialog.hpp \
     controlwidget.hpp \
     mainwindow.h \
-    mediainfodialog.hpp \
     openwebmediadialog.hpp \
     playlistmodel.h \
     playlistview.hpp \

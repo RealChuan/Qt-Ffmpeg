@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "colorspacedialog.hpp"
 #include "controlwidget.hpp"
-#include "mediainfodialog.hpp"
 #include "openwebmediadialog.hpp"
 #include "playlistmodel.h"
 #include "playlistview.hpp"
@@ -17,6 +16,7 @@
 #include <ffmpeg/player.h>
 #include <ffmpeg/videorender/videopreviewwidget.hpp>
 #include <ffmpeg/videorender/videorendercreate.hpp>
+#include <ffmpeg/widgets/mediainfodialog.hpp>
 
 #include <QtWidgets>
 
@@ -369,7 +369,7 @@ void MainWindow::onShowColorSpace()
 
 void MainWindow::onShowMediaInfo()
 {
-    MediaInfoDialog dialog(this);
+    Ffmpeg::MediaInfoDialog dialog(this);
     dialog.setMediaInfo(d_ptr->playerPtr->mediaInfo());
     dialog.exec();
 }
@@ -462,7 +462,6 @@ void MainWindow::onProcessEvents()
                                        errorEvent->error().errorString());
             qWarning() << text;
             d_ptr->setTitleWidgetText(text);
-
         } break;
         default: break;
         }

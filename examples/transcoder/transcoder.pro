@@ -16,10 +16,14 @@ include(../../3rdparty/3rdparty.pri)
 
 SOURCES += \
     main.cc \
-    mainwindow.cc
+    mainwindow.cc \
+    previewwidget.cc \
+    sourcewidget.cc
 
 HEADERS += \
-    mainwindow.hpp
+    mainwindow.hpp \
+    previewwidget.hpp \
+    sourcewidget.hpp
 
 DESTDIR = $$APP_OUTPUT_PATH
 

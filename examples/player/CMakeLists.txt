@@ -6,8 +6,6 @@ set(PROJECT_SOURCES
     main.cpp
     mainwindow.cpp
     mainwindow.h
-    mediainfodialog.cc
-    mediainfodialog.hpp
     openwebmediadialog.cc
     openwebmediadialog.hpp
     playlistmodel.cpp

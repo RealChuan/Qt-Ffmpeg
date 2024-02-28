@@ -18,6 +18,7 @@ public:
         MediaState,
         CacheSpeed,
         SeekChanged,
+        PreviewFramesChanged,
         Error
     };
     Q_ENUM(EventType);
@@ -30,7 +31,11 @@ public:
     }
     auto operator!=(const PropertyChangeEvent &other) const -> bool { return !(*this == other); }
 
-    [[nodiscard]] virtual auto type() const -> EventType { return None; }
+    void setType(EventType type) { m_type = type; }
+    [[nodiscard]] virtual auto type() const -> EventType { return m_type; }
+
+private:
+    EventType m_type = None;
 };
 
 using PropertyChangeEventPtr = QSharedPointer<PropertyChangeEvent>;

@@ -44,6 +44,8 @@ set(PROJECT_SOURCES
     videorender/videorendercreate.hpp
     videorender/widgetrender.cc
     videorender/widgetrender.hpp
+    widgets/mediainfodialog.cc
+    widgets/mediainfodialog.hpp
     audiodecoder.cpp
     audiodecoder.h
     audiodisplay.cc
@@ -81,6 +83,8 @@ set(PROJECT_SOURCES
     packet.h
     player.cpp
     player.h
+    previewtask.cc
+    previewtask.hpp
     subtitle.cpp
     subtitle.h
     subtitledecoder.cpp

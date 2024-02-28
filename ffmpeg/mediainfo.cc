@@ -173,11 +173,13 @@ MediaInfo::MediaInfo(AVFormatContext *formatCtx)
     name = formatCtx->iformat->name;
     longName = formatCtx->iformat->long_name;
     url = formatCtx->url;
-    startTime = QTime::fromMSecsSinceStartOfDay(formatCtx->start_time / 1000)
+    startTime = formatCtx->start_time;
+    startTimeText = QTime::fromMSecsSinceStartOfDay(formatCtx->start_time / 1000)
                     .toString("hh:mm:ss.zzz");
-    duration = QTime::fromMSecsSinceStartOfDay(formatCtx->duration / 1000).toString("hh:mm:ss.zzz");
+    duration = formatCtx->duration;
+    durationText = QTime::fromMSecsSinceStartOfDay(formatCtx->duration / 1000).toString("hh:mm:ss.zzz");
     bitRate = formatCtx->bit_rate;
-    size = formatCtx->duration / AV_TIME_BASE * bitRate / 8;
+    size = duration / AV_TIME_BASE * bitRate / 8;
 
     metadatas = getMetaDatas(formatCtx->metadata);
 
@@ -195,8 +197,8 @@ auto MediaInfo::toJson() const -> QJsonObject
     json.insert("Name", name);
     json.insert("LongName", longName);
     json.insert("Url", url);
-    json.insert("StartTime", startTime);
-    json.insert("Duration", duration);
+    json.insert("StartTime", startTimeText);
+    json.insert("Duration", durationText);
     json.insert("BitRate", Utils::convertBytesToString(bitRate) + "/s");
     json.insert("Size", Utils::convertBytesToString(size));
 

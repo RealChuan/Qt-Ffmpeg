@@ -8,8 +8,10 @@
 #include "formatcontext.h"
 #include "frame.hpp"
 #include "packet.h"
+#include "previewtask.hpp"
 #include "transcodercontext.hpp"
 
+#include <event/errorevent.hpp>
 #include <event/trackevent.hpp>
 #include <event/valueevent.hpp>
 #include <filter/filter.hpp>
@@ -35,10 +37,15 @@ public:
         , outFormatContext(new FormatContext(q_ptr))
         , fpsPtr(new Utils::Fps)
     {
+        threadPool = new QThreadPool(q_ptr);
+        threadPool->setMaxThreadCount(2);
+
         QObject::connect(AVErrorManager::instance(),
                          &AVErrorManager::error,
                          q_ptr,
-                         &Transcoder::error);
+                         [this](const AVError &error) {
+                             addPropertyChangeEvent(new ErrorEvent(error));
+                         });
     }
 
     ~TranscoderPrivate() { reset(); }
@@ -86,9 +93,7 @@ public:
         tracks.append(inFormatContext->subtitleTracks());
         tracks.append(inFormatContext->attachmentTracks());
         addPropertyChangeEvent(new MediaTrackEvent(tracks));
-
         addPropertyChangeEvent(new DurationEvent(inFormatContext->duration()));
-
         return true;
     }
 
@@ -439,6 +444,35 @@ public:
         fpsPtr->reset();
     }
 
+    static auto getKeyFrame(FormatContext *formatContext,
+                            AVContextInfo *videoInfo,
+                            qint64 timestamp,
+                            FramePtr &outPtr) -> bool
+    {
+        PacketPtr packetPtr(new Packet);
+        if (!formatContext->readFrame(packetPtr.get())) {
+            return false;
+        }
+        if (!formatContext->checkPktPlayRange(packetPtr.get())) {
+        } else if (packetPtr->streamIndex() == videoInfo->index()
+                   && ((videoInfo->stream()->disposition & AV_DISPOSITION_ATTACHED_PIC) == 0)
+                   && packetPtr->isKey()) {
+            auto framePtrs = videoInfo->decodeFrame(packetPtr);
+            for (const auto &framePtr : std::as_const(framePtrs)) {
+                if (!framePtr->isKey() && framePtr.isNull()) {
+                    continue;
+                }
+                calculatePts(framePtr.data(), videoInfo, formatContext);
+                auto pts = framePtr->pts();
+                if (timestamp > pts) {
+                    continue;
+                }
+                outPtr = framePtr;
+            }
+        }
+        return true;
+    }
+
     Transcoder *q_ptr;
 
     QString inFilePath;
@@ -484,6 +518,9 @@ public:
 
     Utils::ThreadSafeQueue<PropertyChangeEventPtr> propertyChangeEventQueue;
     std::atomic<size_t> maxPropertyEventQueueSize = 100;
+
+    std::vector<FramePtr> previewFrames;
+    QThreadPool *threadPool;
 };
 
 Transcoder::Transcoder(QObject *parent)
@@ -495,6 +532,7 @@ Transcoder::Transcoder(QObject *parent)
 
 Transcoder::~Transcoder()
 {
+    d_ptr->threadPool->clear();
     stopTranscode();
 }
 
@@ -512,6 +550,39 @@ auto Transcoder::parseInputFile() -> bool
 {
     d_ptr->reset();
     return d_ptr->openInputFile();
+}
+
+auto Transcoder::duration() const -> qint64
+{
+    return d_ptr->inFormatContext->duration();
+}
+
+auto Transcoder::mediaInfo() -> MediaInfo
+{
+    return d_ptr->inFormatContext->mediaInfo();
+}
+
+void Transcoder::startPreviewFrames(int count)
+{
+    d_ptr->threadPool->start(new PreviewCountTask(d_ptr->inFilePath, count, this));
+}
+
+void Transcoder::setPreviewFrames(const std::vector<QSharedPointer<Frame>> &framePtrs)
+{
+    QMetaObject::invokeMethod(
+        this,
+        [=] {
+            d_ptr->previewFrames = framePtrs;
+            auto *propertChangeEvent = new PropertyChangeEvent;
+            propertChangeEvent->setType(PropertyChangeEvent::PreviewFramesChanged);
+            d_ptr->addPropertyChangeEvent(propertChangeEvent);
+        },
+        Qt::QueuedConnection);
+}
+
+auto Transcoder::previewFrames() const -> std::vector<QSharedPointer<Frame>>
+{
+    return d_ptr->previewFrames;
 }
 
 void Transcoder::setOutFilePath(const QString &filepath)

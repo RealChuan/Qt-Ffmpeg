@@ -6,6 +6,7 @@ include(gpu/gpu.pri)
 include(videorender/videorender.pri)
 include(audiorender/audiorender.pri)
 include(event/event.pri)
+include(widgets/widgets.pri)
 
 QT += widgets multimedia openglwidgets
 
@@ -33,6 +34,7 @@ SOURCES += \
     mediainfo.cc \
     packet.cpp \
     player.cpp \
+    previewtask.cc \
     subtitle.cpp \
     subtitledecoder.cpp \
     subtitledisplay.cc \
@@ -63,6 +65,7 @@ HEADERS += \
     mediainfo.hpp \
     packet.h \
     player.h \
+    previewtask.hpp \
     subtitle.h \
     subtitledecoder.h \
     subtitledisplay.hpp \

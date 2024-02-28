@@ -1,6 +1,8 @@
 #ifndef TRANSCODER_H
 #define TRANSCODER_H
 
+#include "mediainfo.hpp"
+
 #include <ffmpeg/event/event.hpp>
 
 #include <QThread>
@@ -24,6 +26,12 @@ public:
 
     void setInFilePath(const QString &filePath);
     auto parseInputFile() -> bool;
+
+    [[nodiscard]] auto duration() const -> qint64; // microsecond
+    auto mediaInfo() -> MediaInfo;
+    void startPreviewFrames(int count);
+    void setPreviewFrames(const std::vector<QSharedPointer<Frame>> &framePtrs);
+    [[nodiscard]] auto previewFrames() const -> std::vector<QSharedPointer<Frame>>;
 
     void setOutFilePath(const QString &filepath);
 
@@ -63,7 +71,6 @@ public:
     auto takePropertyChangeEvent() -> PropertyChangeEventPtr;
 
 signals:
-    void error(const Ffmpeg::AVError &avError);
     void progressChanged(qreal); // 0.XXXX
     void eventIncrease();
 

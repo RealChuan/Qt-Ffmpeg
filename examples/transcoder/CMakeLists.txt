@@ -1,4 +1,11 @@
-set(PROJECT_SOURCES main.cc mainwindow.cc mainwindow.hpp)
+set(PROJECT_SOURCES
+    main.cc
+    mainwindow.cc
+    mainwindow.hpp
+    previewwidget.cc
+    previewwidget.hpp
+    sourcewidget.cc
+    sourcewidget.hpp)
 
 qt_add_executable(QFfmpegTranscoder MANUAL_FINALIZATION ${PROJECT_SOURCES})
 target_link_libraries(

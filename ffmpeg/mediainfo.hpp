@@ -95,8 +95,10 @@ struct FFMPEG_EXPORT MediaInfo
     QString name;
     QString longName;
     QString url;
-    QString startTime;
-    QString duration;
+    qint64 startTime = 0; // microsecond
+    QString startTimeText;
+    qint64 duration = 0; // microsecond
+    QString durationText;
     qint64 bitRate = 0;
     qint64 size = 0;
     Metadatas metadatas;
