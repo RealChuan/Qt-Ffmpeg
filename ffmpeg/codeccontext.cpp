@@ -72,6 +72,7 @@ CodecContext::CodecContext(const AVCodec *codec, QObject *parent)
     : QObject(parent)
     , d_ptr(new CodecContextPrivate(this))
 {
+    qInfo() << "AVCodec:" << codec->long_name;
     d_ptr->codecCtx = avcodec_alloc_context3(codec);
     d_ptr->init();
     Q_ASSERT(d_ptr->codecCtx != nullptr);
@@ -263,7 +264,7 @@ void CodecContext::setCrf(int crf)
 {
     // 设置crf参数，范围是0-51，0是无损，23是默认值，51是最差质量
     Q_ASSERT(crf >= 0 && crf <= 51);
-    av_opt_set(d_ptr->codecCtx->priv_data, "crf", QString::number(crf).toLocal8Bit().constData(), 0);
+    av_opt_set_double(d_ptr->codecCtx->priv_data, "crf", crf, 0);
 }
 
 void CodecContext::setPreset(const QString &preset)
@@ -291,6 +292,7 @@ auto CodecContext::open() -> bool
 auto CodecContext::sendPacket(Packet *packet) -> bool
 {
     int ret = avcodec_send_packet(d_ptr->codecCtx, packet->avPacket());
+    AVERROR(EINVAL);
     ERROR_RETURN(ret)
 }
 

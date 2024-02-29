@@ -15,11 +15,9 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void onVideoEncoderChanged();
     void onOpenInputFile();
     void onResetConfig();
     void onOpenSubtitle();
-    void onOpenOutputFile();
     void onStart();
 
     void onShowMediaInfo();

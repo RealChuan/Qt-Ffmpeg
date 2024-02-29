@@ -164,7 +164,8 @@ public:
                     != 0) {
                     avCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
                 }
-                contextInfoPtr->openCodec(AVContextInfo::GpuEncode);
+                contextInfoPtr->openCodec(useGpuEncode ? AVContextInfo::GpuEncode
+                                                       : AVContextInfo::NotUseGpu);
                 auto ret = avcodec_parameters_from_context(stream->codecpar,
                                                            contextInfoPtr->codecCtx()->avCodecCtx());
                 if (ret < 0) {
@@ -388,7 +389,7 @@ public:
     void loop()
     {
         auto duration = inFormatContext->duration();
-        while (runing) {
+        while (runing.load()) {
             PacketPtr packetPtr(new Packet);
             if (!inFormatContext->readFrame(packetPtr.get())) {
                 break;
@@ -413,7 +414,7 @@ public:
 
                 calculatePts(packetPtr.data(),
                              transcodeContexts.at(stream_index)->decContextInfoPtr.data());
-                emit q_ptr->progressChanged(packetPtr->pts() / duration);
+                addPropertyChangeEvent(new PositionEvent(packetPtr->pts()));
                 if (transcodeCtx->decContextInfoPtr->mediaType() == AVMEDIA_TYPE_VIDEO) {
                     fpsPtr->update();
                 }
@@ -512,6 +513,7 @@ public:
     QString profile = "main";
 
     bool useGpuDecode = false;
+    bool useGpuEncode = false;
 
     std::atomic_bool runing = true;
     QScopedPointer<Utils::Fps> fpsPtr;
@@ -536,9 +538,14 @@ Transcoder::~Transcoder()
     stopTranscode();
 }
 
-void Transcoder::setUseGpuDecode(bool useGpu)
+void Transcoder::setUseGpuDecode(bool use)
 {
-    d_ptr->useGpuDecode = useGpu;
+    d_ptr->useGpuDecode = use;
+}
+
+void Transcoder::setUseGpuEncode(bool use)
+{
+    d_ptr->useGpuEncode = use;
 }
 
 void Transcoder::setInFilePath(const QString &filePath)

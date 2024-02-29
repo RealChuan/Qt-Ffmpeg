@@ -17,6 +17,7 @@ public:
         renderPtr->widget()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         renderPtr->setBackgroundColor(Qt::white);
         infoLabel = new QLabel(q_ptr);
+        infoLabel->setAlignment(Qt::AlignCenter);
         leftButton = new QToolButton(q_ptr);
         leftButton->setMinimumSize(buttonSize);
         leftButton->setText("<");

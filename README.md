@@ -3,7 +3,7 @@
 - [简体中文](README.md)
 - [English](README.en.md)
 
-## QFfmpegPlayer
+## Player
 
 <div align=center><img src="doc/player.jpeg"></div>
 
@@ -56,7 +56,7 @@ Dialogue: 0,0:01:06.77,0:01:08.00,en,,0000,0000,0000,,Peek-a-boo!\r\n
 subtitles=filename='%1':original_size=%2x%3
 ```
 
-## QFfmpegTranscoder
+## Transcoder
 
 如何设置编码参数以获得更小的文件和更好的视频质量？
 

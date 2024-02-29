@@ -8,7 +8,7 @@ public:
     explicit SourceWidgetPrivate(SourceWidget *q)
         : q_ptr(q)
     {
-        inTextEdit = new QTextEdit(q_ptr);
+        inLineEdit = new QLineEdit(q_ptr);
         infoLabel = new QLabel(q_ptr);
         infoLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         startTimeEdit = new QTimeEdit(q_ptr);
@@ -20,7 +20,7 @@ public:
 
     SourceWidget *q_ptr;
 
-    QTextEdit *inTextEdit;
+    QLineEdit *inLineEdit;
     QLabel *infoLabel;
     QTimeEdit *startTimeEdit;
     QTimeEdit *endTimeEdit;
@@ -35,16 +35,16 @@ SourceWidget::SourceWidget(QWidget *parent)
     buildConnect();
 }
 
-SourceWidget::~SourceWidget() {}
+SourceWidget::~SourceWidget() = default;
 
 void SourceWidget::setSource(const QString &source)
 {
-    d_ptr->inTextEdit->setPlainText(source);
+    d_ptr->inLineEdit->setText(source);
 }
 
 auto SourceWidget::source() const -> QString
 {
-    return d_ptr->inTextEdit->toPlainText();
+    return d_ptr->inLineEdit->text().trimmed();
 }
 
 void SourceWidget::setDuration(qint64 duration)
@@ -81,7 +81,7 @@ void SourceWidget::setupUI()
 
     auto *layout1 = new QHBoxLayout;
     layout1->addWidget(new QLabel(tr("Input File:"), this));
-    layout1->addWidget(d_ptr->inTextEdit);
+    layout1->addWidget(d_ptr->inLineEdit);
 
     auto *layout2 = new QHBoxLayout;
     layout2->addWidget(fileInfoButton);

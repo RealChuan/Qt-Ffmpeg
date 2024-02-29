@@ -151,10 +151,10 @@ auto compareAVRational(const AVRational &a, const AVRational &b) -> bool
     return a.den == b.den && a.num == b.num;
 }
 
-auto getCodecQuantizer(const QString &codecname) -> QPair<int, int>
+auto getCodecQuantizer(const QString &codecName) -> QPair<int, int>
 {
     QScopedPointer<AVContextInfo> contextInfoPtr(new AVContextInfo);
-    if (!contextInfoPtr->initEncoder(codecname)) {
+    if (!contextInfoPtr->initEncoder(codecName)) {
         return {-1, -1};
     }
     auto quantizer = contextInfoPtr->codecCtx()->quantizer();

@@ -4,7 +4,7 @@ QT       += core gui widgets network multimedia openglwidgets core5compat
 
 TEMPLATE = app
 
-TARGET = QFfmpegPlayer
+TARGET = Player
 
 LIBS += \
     -L$$APP_OUTPUT_PATH/../libs \

@@ -22,7 +22,8 @@ public:
     explicit Transcoder(QObject *parent = nullptr);
     ~Transcoder() override;
 
-    void setUseGpuDecode(bool useGpu);
+    void setUseGpuDecode(bool use);
+    void setUseGpuEncode(bool use);
 
     void setInFilePath(const QString &filePath);
     auto parseInputFile() -> bool;
@@ -71,7 +72,6 @@ public:
     auto takePropertyChangeEvent() -> PropertyChangeEventPtr;
 
 signals:
-    void progressChanged(qreal); // 0.XXXX
     void eventIncrease();
 
 protected:

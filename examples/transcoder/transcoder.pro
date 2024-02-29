@@ -4,7 +4,7 @@ QT       += core gui widgets network multimedia openglwidgets core5compat
 
 TEMPLATE = app
 
-TARGET = QFfmpegTranscoder
+TARGET = Transcoder
 
 LIBS += \
     -L$$APP_OUTPUT_PATH/../libs \
@@ -15,15 +15,23 @@ LIBS += \
 include(../../3rdparty/3rdparty.pri)
 
 SOURCES += \
+    audioencoderwidget.cc \
     main.cc \
     mainwindow.cc \
+    outputwidget.cc \
     previewwidget.cc \
-    sourcewidget.cc
+    sourcewidget.cc \
+    stautuswidget.cc \
+    videoencoderwidget.cc
 
 HEADERS += \
+    audioencoderwidget.hpp \
     mainwindow.hpp \
+    outputwidget.hpp \
     previewwidget.hpp \
-    sourcewidget.hpp
+    sourcewidget.hpp \
+    stautuswidget.hpp \
+    videoencoderwidget.hpp
 
 DESTDIR = $$APP_OUTPUT_PATH
 
