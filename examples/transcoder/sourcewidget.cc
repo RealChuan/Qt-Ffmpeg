@@ -63,6 +63,12 @@ void SourceWidget::setFileInfo(const QString &info)
     d_ptr->infoLabel->setToolTip(info);
 }
 
+auto SourceWidget::range() const -> QPair<qint64, qint64>
+{
+    return {d_ptr->startTimeEdit->time().msecsSinceStartOfDay() * 1000,
+            d_ptr->endTimeEdit->time().msecsSinceStartOfDay() * 1000};
+}
+
 void SourceWidget::onRangeChanged()
 {
     d_ptr->startTimeEdit->setMaximumTime(d_ptr->endTimeEdit->time());

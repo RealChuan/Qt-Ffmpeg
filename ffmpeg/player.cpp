@@ -47,7 +47,7 @@ public:
                          &AVErrorManager::error,
                          q_ptr,
                          [this](const AVError &error) {
-                             addPropertyChangeEvent(new ErrorEvent(error));
+                             addPropertyChangeEvent(new AVErrorEvent(error));
                          });
     }
 

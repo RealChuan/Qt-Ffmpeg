@@ -7,6 +7,7 @@
 #include "videoencoderwidget.hpp"
 
 #include <ffmpeg/averror.h>
+#include <ffmpeg/encodecontext.hpp>
 #include <ffmpeg/event/errorevent.hpp>
 #include <ffmpeg/event/trackevent.hpp>
 #include <ffmpeg/event/valueevent.hpp>
@@ -24,15 +25,14 @@ public:
     {
         Ffmpeg::printFfmpegInfo();
 
+        Ffmpeg::EncodeContext encodeContext;
+
         transcoder = new Ffmpeg::Transcoder(q_ptr);
 
         sourceWidget = new SourceWidget(q_ptr);
         tabWidget = new QTabWidget(q_ptr);
         previewWidget = new PreviewWidget(q_ptr);
         videoEncoderWidget = new VideoEncoderWidget(q_ptr);
-        videoEncoderWidget->setPreset(transcoder->presets(), transcoder->preset());
-        videoEncoderWidget->setTune(transcoder->tunes(), transcoder->tune());
-        videoEncoderWidget->setProfile(transcoder->profiles(), transcoder->profile());
         audioEncoderWidget = new AudioEncoderWidget(q_ptr);
         tabWidget->addTab(previewWidget,
                           QCoreApplication::translate("MainWindowPrivate", "Preview"));
@@ -187,20 +187,12 @@ void MainWindow::onStart()
 
         d_ptr->transcoder->setInFilePath(inPath);
         d_ptr->transcoder->setOutFilePath(outPath);
-        d_ptr->transcoder->setAudioEncodecName(d_ptr->audioEncoderWidget->encoder());
-        d_ptr->transcoder->setVideoEncodecName(d_ptr->videoEncoderWidget->encoder());
-        d_ptr->transcoder->setUseGpuDecode(d_ptr->videoEncoderWidget->gpuDecode());
-        d_ptr->transcoder->setUseGpuEncode(d_ptr->videoEncoderWidget->gpuEncode());
-        d_ptr->transcoder->setSize(d_ptr->videoEncoderWidget->videoSize());
+        d_ptr->transcoder->setVideoEncodeContext(d_ptr->videoEncoderWidget->encodeParam());
+        d_ptr->transcoder->setAudioEncodeContext(d_ptr->audioEncoderWidget->encodeParam());
+
         if (QFile::exists(subtitlePath)) {
             d_ptr->transcoder->setSubtitleFilename(subtitlePath);
         }
-        d_ptr->transcoder->setQuailty(d_ptr->videoEncoderWidget->quality());
-        d_ptr->transcoder->setMinBitrate(d_ptr->videoEncoderWidget->minBitrate());
-        d_ptr->transcoder->setMaxBitrate(d_ptr->videoEncoderWidget->maxBitrate());
-        d_ptr->transcoder->setCrf(d_ptr->videoEncoderWidget->crf());
-        d_ptr->transcoder->setPreset(d_ptr->videoEncoderWidget->preset());
-        d_ptr->transcoder->setProfile(d_ptr->videoEncoderWidget->profile());
         d_ptr->transcoder->startTranscode();
         d_ptr->statusWidget->setStatus(tr("Stop"));
 
@@ -236,7 +228,7 @@ void MainWindow::onProcessEvents()
             d_ptr->statusWidget->setProgress(positionEvent->position() * 100.0
                                              / d_ptr->transcoder->duration());
         } break;
-        case Ffmpeg::PropertyChangeEvent::MediaTrack: {
+        case Ffmpeg::PropertyChangeEvent::EventType::MediaTrack: {
             bool audioSet = false;
             bool videoSet = false;
             auto *mediaTrackEvent = dynamic_cast<Ffmpeg::MediaTrackEvent *>(eventPtr.data());
@@ -265,13 +257,20 @@ void MainWindow::onProcessEvents()
         case Ffmpeg::PropertyChangeEvent::EventType::PreviewFramesChanged:
             d_ptr->previewWidget->setFrames(d_ptr->transcoder->previewFrames());
             break;
-        case Ffmpeg::PropertyChangeEvent::Error: {
-            auto *errorEvent = dynamic_cast<Ffmpeg::ErrorEvent *>(eventPtr.data());
+        case Ffmpeg::PropertyChangeEvent::EventType::AVError: {
+            auto *errorEvent = dynamic_cast<Ffmpeg::AVErrorEvent *>(eventPtr.data());
             const auto text = tr("Error[%1]:%2.")
                                   .arg(QString::number(errorEvent->error().errorCode()),
                                        errorEvent->error().errorString());
             qWarning() << text;
-        }
+            statusBar()->showMessage(text);
+        } break;
+        case Ffmpeg::PropertyChangeEvent::EventType::Error: {
+            auto *errorEvent = dynamic_cast<Ffmpeg::ErrorEvent *>(eventPtr.data());
+            const auto text = tr("Error:%1.").arg(errorEvent->error());
+            qWarning() << text;
+            statusBar()->showMessage(text);
+        } break;
         default: break;
         }
     }
@@ -301,7 +300,7 @@ void MainWindow::setupUI()
     layout->addWidget(d_ptr->outPutWidget);
     setCentralWidget(widget);
 
-    statusBar()->addWidget(d_ptr->statusWidget);
+    statusBar()->addPermanentWidget(d_ptr->statusWidget);
 
     auto *tempWidget = new QWidget(this);
     auto *tempLayout = new QVBoxLayout(tempWidget);

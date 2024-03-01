@@ -68,6 +68,8 @@ set(PROJECT_SOURCES
     colorutils.hpp
     decoder.cc
     decoder.h
+    encodecontext.cc
+    encodecontext.hpp
     ffmepg_global.h
     ffmpegutils.cc
     ffmpegutils.hpp

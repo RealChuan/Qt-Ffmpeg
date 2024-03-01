@@ -13,6 +13,7 @@ extern "C" {
 
 namespace Ffmpeg {
 
+struct EncodeContext;
 class AVError;
 class Frame;
 class FFMPEG_EXPORT Transcoder : public QThread
@@ -21,9 +22,6 @@ class FFMPEG_EXPORT Transcoder : public QThread
 public:
     explicit Transcoder(QObject *parent = nullptr);
     ~Transcoder() override;
-
-    void setUseGpuDecode(bool use);
-    void setUseGpuEncode(bool use);
 
     void setInFilePath(const QString &filePath);
     auto parseInputFile() -> bool;
@@ -34,32 +32,14 @@ public:
     void setPreviewFrames(const std::vector<QSharedPointer<Frame>> &framePtrs);
     [[nodiscard]] auto previewFrames() const -> std::vector<QSharedPointer<Frame>>;
 
+    void setVideoEncodeContext(const EncodeContext &encodeContext);
+    void setAudioEncodeContext(const EncodeContext &encodeContext);
+
+    void setRange(const QPair<qint64, qint64> &range);
+
     void setOutFilePath(const QString &filepath);
 
-    void setAudioEncodecID(AVCodecID codecID);
-    void setVideoEnCodecID(AVCodecID codecID);
-    void setAudioEncodecName(const QString &name);
-    void setVideoEncodecName(const QString &name);
-
-    void setSize(const QSize &size);
     void setSubtitleFilename(const QString &filename);
-
-    void setQuailty(int quailty);
-    void setMinBitrate(int64_t bitrate);
-    void setMaxBitrate(int64_t bitrate);
-    void setCrf(int crf);
-
-    void setPreset(const QString &preset);
-    [[nodiscard]] auto preset() const -> QString;
-    [[nodiscard]] auto presets() const -> QStringList;
-
-    void setTune(const QString &tune);
-    [[nodiscard]] auto tune() const -> QString;
-    [[nodiscard]] auto tunes() const -> QStringList;
-
-    void setProfile(const QString &profile);
-    [[nodiscard]] auto profile() const -> QString;
-    [[nodiscard]] auto profiles() const -> QStringList;
 
     void startTranscode();
     void stopTranscode();

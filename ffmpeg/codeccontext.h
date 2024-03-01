@@ -4,18 +4,15 @@
 #include <QObject>
 
 extern "C" {
-#include <libavutil/avutil.h>
-#include <libavutil/samplefmt.h>
+#include <libavcodec/codec.h>
 }
 
-struct AVCodecContext;
 struct AVCodecParameters;
-struct AVRational;
-struct AVCodec;
-struct AVChannelLayout;
+struct AVCodecContext;
 
 namespace Ffmpeg {
 
+struct EncodeContext;
 class Subtitle;
 class Packet;
 class Frame;
@@ -28,28 +25,32 @@ public:
     void copyToCodecParameters(CodecContext *dst);
 
     auto setParameters(const AVCodecParameters *par) -> bool;
+
+    [[nodiscard]] auto supportFrameRates() const -> QVector<AVRational>;
+    void setFrameRate(const AVRational &frameRate);
+
+    [[nodiscard]] auto supportPixFmts() const -> QVector<AVPixelFormat>;
     void setPixfmt(AVPixelFormat pixfmt);
+
+    [[nodiscard]] auto supportSampleRates() const -> QVector<int>;
     void setSampleRate(int sampleRate);
+
+    [[nodiscard]] auto supportSampleFmts() const -> QVector<AVSampleFormat>;
     void setSampleFmt(AVSampleFormat sampleFmt);
 
-    void setMinBitrate(int64_t bitrate);
-    void setMaxBitrate(int64_t bitrate);
-    void setCrf(int crf);
-    void setPreset(const QString &preset);
-    void setTune(const QString &tune);
-    void setProfile(const QString &profile);
+    [[nodiscard]] auto supportedProfiles() const -> QVector<AVProfile>;
+    void setProfile(int profile);
 
-    void setChLayout(const AVChannelLayout &chLayout);
+    [[nodiscard]] auto supportedChLayouts() const -> QVector<AVChannelLayout>;
     [[nodiscard]] auto chLayout() const -> AVChannelLayout;
+    void setChLayout(const AVChannelLayout &chLayout);
+
+    void setEncodeParameters(const EncodeContext &encodeContext);
 
     void setSize(const QSize &size);
     [[nodiscard]] auto size() const -> QSize;
 
-    void setQuailty(int quailty);
     [[nodiscard]] auto quantizer() const -> QPair<int, int>;
-
-    [[nodiscard]] auto supportPixFmts() const -> QVector<AVPixelFormat>;
-    [[nodiscard]] auto supportSampleFmts() const -> QVector<AVSampleFormat>;
 
     // Set before open, Soft solution is effective
     void setThreadCount(int threadCount);

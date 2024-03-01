@@ -1,4 +1,5 @@
 #include "ffmpegutils.hpp"
+#include "audioframeconverter.h"
 #include "avcontextinfo.h"
 #include "codeccontext.h"
 #include "formatcontext.h"
@@ -151,19 +152,9 @@ auto compareAVRational(const AVRational &a, const AVRational &b) -> bool
     return a.den == b.den && a.num == b.num;
 }
 
-auto getCodecQuantizer(const QString &codecName) -> QPair<int, int>
+auto getCodecsInfo(AVMediaType mediaType, bool encoder) -> CodecInfos
 {
-    QScopedPointer<AVContextInfo> contextInfoPtr(new AVContextInfo);
-    if (!contextInfoPtr->initEncoder(codecName)) {
-        return {-1, -1};
-    }
-    auto quantizer = contextInfoPtr->codecCtx()->quantizer();
-    return quantizer;
-}
-
-auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QMap<AVCodecID, QString>
-{
-    QMap<AVCodecID, QString> codecnames;
+    CodecInfos codecInfos;
     const AVCodecDescriptor **codecs{};
     auto nb_codecs = get_codecs_sorted(&codecs);
 
@@ -182,7 +173,8 @@ auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QMap<AVCode
                 continue;
             }
             const auto *name = codec->name;
-            codecnames.insert(codec->id, codec->name);
+            codecInfos.append(
+                {QString::fromUtf8(name), QString::fromUtf8(desc->long_name), codec->id});
             auto str = QString::asprintf("%-20s %s",
                                          name,
                                          codec->long_name != nullptr ? codec->long_name : "");
@@ -193,7 +185,7 @@ auto getCurrentSupportCodecs(AVMediaType mediaType, bool encoder) -> QMap<AVCode
         }
     }
     av_free(codecs);
-    return codecnames;
+    return codecInfos;
 }
 
 auto getMetaDatas(AVDictionary *metadata) -> Metadatas
@@ -204,6 +196,39 @@ auto getMetaDatas(AVDictionary *metadata) -> Metadatas
         metadatas.insert(QString::fromUtf8(tag->key), QString::fromUtf8(tag->value));
     }
     return metadatas;
+}
+
+ChLayouts getChLayouts(const QVector<AVChannelLayout> &channelLayout)
+{
+    static ChLayouts s_chLayouts;
+    if (s_chLayouts.isEmpty()) {
+        QVector<qint64> channels{AV_CH_LAYOUT_MONO,
+                                 AV_CH_LAYOUT_STEREO,
+                                 AV_CH_LAYOUT_2_1,
+                                 AV_CH_LAYOUT_QUAD,
+                                 AV_CH_LAYOUT_5POINT0_BACK,
+                                 AV_CH_LAYOUT_6POINT0_FRONT,
+                                 AV_CH_LAYOUT_6POINT1,
+                                 AV_CH_LAYOUT_7POINT1};
+
+        for (const auto &channel : std::as_const(channels)) {
+            auto ch = static_cast<AVChannel>(channel);
+            // char name[64] = {0};
+            // char description[128] = {0};
+            // av_channel_name(name, sizeof(name), ch);
+            // av_channel_description(description, sizeof(description), ch);
+            // auto text = QString("%1 (%2)").arg(name).arg(description);
+            AVChannelLayout chLayout = {AV_CHANNEL_ORDER_UNSPEC};
+            av_channel_layout_from_mask(&chLayout, channel);
+            s_chLayouts.append({ch, getAVChannelLayoutDescribe(chLayout)});
+        }
+    }
+
+    ChLayouts chLayouts;
+    for (const auto &ch : std::as_const(channelLayout)) {
+        chLayouts.append({static_cast<AVChannel>(ch.u.mask), getAVChannelLayoutDescribe(ch)});
+    }
+    return chLayouts.isEmpty() ? s_chLayouts : chLayouts;
 }
 
 } // namespace Ffmpeg

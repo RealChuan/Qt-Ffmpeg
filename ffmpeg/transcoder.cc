@@ -4,6 +4,7 @@
 #include "avcontextinfo.h"
 #include "averrormanager.hpp"
 #include "codeccontext.h"
+#include "encodecontext.hpp"
 #include "ffmpegutils.hpp"
 #include "formatcontext.h"
 #include "frame.hpp"
@@ -40,17 +41,20 @@ public:
         threadPool = new QThreadPool(q_ptr);
         threadPool->setMaxThreadCount(2);
 
+        videoEncodeContext.mediaType = AVMEDIA_TYPE_VIDEO;
+        audioEncodeContext.mediaType = AVMEDIA_TYPE_AUDIO;
+
         QObject::connect(AVErrorManager::instance(),
                          &AVErrorManager::error,
                          q_ptr,
                          [this](const AVError &error) {
-                             addPropertyChangeEvent(new ErrorEvent(error));
+                             addPropertyChangeEvent(new AVErrorEvent(error));
                          });
     }
 
     ~TranscoderPrivate() { reset(); }
 
-    auto openInputFile() -> bool
+    auto openInputFile(bool eventChanged) -> bool
     {
         Q_ASSERT(!inFilePath.isEmpty());
         auto ret = inFormatContext->openFilePath(inFilePath);
@@ -81,19 +85,26 @@ public:
                 return false;
             }
             if (codec_type == AVMEDIA_TYPE_VIDEO || codec_type == AVMEDIA_TYPE_AUDIO) {
-                contextInfoPtr->openCodec(useGpuDecode ? AVContextInfo::GpuDecode
-                                                       : AVContextInfo::NotUseGpu);
+                if (!contextInfoPtr->openCodec(videoEncodeContext.gpuDecode
+                                                   ? AVContextInfo::GpuDecode
+                                                   : AVContextInfo::NotUseGpu)) {
+                    return false;
+                }
             }
             transContext->decContextInfoPtr = contextInfoPtr;
         }
         inFormatContext->dumpFormat();
 
-        auto tracks = inFormatContext->audioTracks();
-        tracks.append(inFormatContext->videoTracks());
-        tracks.append(inFormatContext->subtitleTracks());
-        tracks.append(inFormatContext->attachmentTracks());
-        addPropertyChangeEvent(new MediaTrackEvent(tracks));
-        addPropertyChangeEvent(new DurationEvent(inFormatContext->duration()));
+        range = {0, inFormatContext->duration()};
+
+        if (eventChanged) {
+            auto tracks = inFormatContext->audioTracks();
+            tracks.append(inFormatContext->videoTracks());
+            tracks.append(inFormatContext->subtitleTracks());
+            tracks.append(inFormatContext->attachmentTracks());
+            addPropertyChangeEvent(new MediaTrackEvent(tracks));
+            addPropertyChangeEvent(new DurationEvent(inFormatContext->duration()));
+        }
         return true;
     }
 
@@ -127,11 +138,12 @@ public:
                     return ret != 0;
                 }
                 stream->time_base = inStream->time_base;
-                stream->codecpar->width = inStream->codecpar->width > 0 ? inStream->codecpar->width
-                                                                        : size.width();
+                stream->codecpar->width = inStream->codecpar->width > 0
+                                              ? inStream->codecpar->width
+                                              : videoEncodeContext.size.width();
                 stream->codecpar->height = inStream->codecpar->height > 0
                                                ? inStream->codecpar->height
-                                               : size.height();
+                                               : videoEncodeContext.size.width();
                 continue;
             }
             stream->codecpar->codec_type = decContextInfo->mediaType();
@@ -142,30 +154,24 @@ public:
                 contextInfoPtr->setIndex(i);
                 contextInfoPtr->setStream(stream);
                 contextInfoPtr->initEncoder(decContextInfo->mediaType() == AVMEDIA_TYPE_AUDIO
-                                                ? audioEncoderName
-                                                : videoEncoderName);
+                                                ? audioEncodeContext.encoderName
+                                                : videoEncodeContext.encoderName);
                 //contextInfoPtr->initEncoder(decContextInfo->codecCtx()->avCodecCtx()->codec_id);
                 auto *codecCtx = contextInfoPtr->codecCtx();
                 auto *avCodecCtx = codecCtx->avCodecCtx();
                 decContextInfo->codecCtx()->copyToCodecParameters(codecCtx);
                 // ffmpeg example transcoding.c ? framerate, sample_rate
                 codecCtx->avCodecCtx()->time_base = decContextInfo->timebase();
-                codecCtx->setQuailty(quailty);
-                codecCtx->setCrf(crf);
-                codecCtx->setPreset(preset);
-                codecCtx->setTune(tune);
-                if (decContextInfo->mediaType() == AVMEDIA_TYPE_VIDEO) {
-                    codecCtx->setSize(size);
-                    codecCtx->setMinBitrate(minBitrate);
-                    codecCtx->setMaxBitrate(maxBitrate);
-                    codecCtx->setProfile(profile);
-                }
+                codecCtx->setEncodeParameters(decContextInfo->mediaType() == AVMEDIA_TYPE_AUDIO
+                                                  ? audioEncodeContext
+                                                  : videoEncodeContext);
                 if ((outFormatContext->avFormatContext()->oformat->flags & AVFMT_GLOBALHEADER)
                     != 0) {
                     avCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
                 }
-                contextInfoPtr->openCodec(useGpuEncode ? AVContextInfo::GpuEncode
-                                                       : AVContextInfo::NotUseGpu);
+                if (!contextInfoPtr->openCodec(AVContextInfo::GpuEncode)) {
+                    return false;
+                }
                 auto ret = avcodec_parameters_from_context(stream->codecpar,
                                                            contextInfoPtr->codecCtx()->avCodecCtx());
                 if (ret < 0) {
@@ -205,10 +211,10 @@ public:
         }
         QString filter_spec;
         if (codec_type == AVMEDIA_TYPE_VIDEO) {
-            if (size.isValid()) { // "scale=320:240"
+            if (videoEncodeContext.size.isValid()) { // "scale=320:240"
                 filter_spec = QString("scale=%1:%2")
-                                  .arg(QString::number(size.width()),
-                                       QString::number(size.height()));
+                                  .arg(QString::number(videoEncodeContext.size.width()),
+                                       QString::number(videoEncodeContext.size.height()));
             }
             if (!subtitleFilename.isEmpty()) {
                 // "subtitles=filename=..." burn subtitle into video
@@ -217,8 +223,8 @@ public:
                 }
                 filter_spec += QString("subtitles=filename='%1':original_size=%2x%3")
                                    .arg(subtitleFilename,
-                                        QString::number(size.width()),
-                                        QString::number(size.height()));
+                                        QString::number(videoEncodeContext.size.width()),
+                                        QString::number(videoEncodeContext.size.height()));
             }
             if (filter_spec.isEmpty()) {
                 filter_spec = "null";
@@ -227,7 +233,7 @@ public:
         } else {
             filter_spec = "anull";
         }
-        transcodeCtx->init_filter(filter_spec, frame);
+        transcodeCtx->initFilter(filter_spec, frame);
     }
 
     void initAudioFifo() const
@@ -388,7 +394,6 @@ public:
 
     void loop()
     {
-        auto duration = inFormatContext->duration();
         while (runing.load()) {
             PacketPtr packetPtr(new Packet);
             if (!inFormatContext->readFrame(packetPtr.get())) {
@@ -481,39 +486,11 @@ public:
     FormatContext *inFormatContext;
     FormatContext *outFormatContext;
     QVector<TranscoderContext *> transcodeContexts{};
-    QString audioEncoderName;
-    QString videoEncoderName;
-    QSize size = QSize(-1, -1);
     QString subtitleFilename;
-    int quailty = -1;
-    int64_t minBitrate = -1;
-    int64_t maxBitrate = -1;
-    int crf = 18;
-    QStringList presets{"ultrafast",
-                        "superfast",
-                        "veryfast",
-                        "faster",
-                        "fast",
-                        "medium",
-                        "slow",
-                        "slower",
-                        "veryslow",
-                        "placebo"};
-    QString preset = "medium";
-    QStringList tunes{"film",
-                      "animation",
-                      "grain",
-                      "stillimage",
-                      "psnr",
-                      "ssim",
-                      "fastdecode",
-                      "zerolatency"};
-    QString tune = "film";
-    QStringList profiles{"baseline", "extended", "main", "high"};
-    QString profile = "main";
 
-    bool useGpuDecode = false;
-    bool useGpuEncode = false;
+    EncodeContext videoEncodeContext;
+    EncodeContext audioEncodeContext;
+    QPair<qint64, qint64> range;
 
     std::atomic_bool runing = true;
     QScopedPointer<Utils::Fps> fpsPtr;
@@ -538,16 +515,6 @@ Transcoder::~Transcoder()
     stopTranscode();
 }
 
-void Transcoder::setUseGpuDecode(bool use)
-{
-    d_ptr->useGpuDecode = use;
-}
-
-void Transcoder::setUseGpuEncode(bool use)
-{
-    d_ptr->useGpuEncode = use;
-}
-
 void Transcoder::setInFilePath(const QString &filePath)
 {
     d_ptr->inFilePath = filePath;
@@ -556,7 +523,7 @@ void Transcoder::setInFilePath(const QString &filePath)
 auto Transcoder::parseInputFile() -> bool
 {
     d_ptr->reset();
-    return d_ptr->openInputFile();
+    return d_ptr->openInputFile(true);
 }
 
 auto Transcoder::duration() const -> qint64
@@ -581,7 +548,7 @@ void Transcoder::setPreviewFrames(const std::vector<QSharedPointer<Frame>> &fram
         [=] {
             d_ptr->previewFrames = framePtrs;
             auto *propertChangeEvent = new PropertyChangeEvent;
-            propertChangeEvent->setType(PropertyChangeEvent::PreviewFramesChanged);
+            propertChangeEvent->setType(PropertyChangeEvent::EventType::PreviewFramesChanged);
             d_ptr->addPropertyChangeEvent(propertChangeEvent);
         },
         Qt::QueuedConnection);
@@ -597,29 +564,19 @@ void Transcoder::setOutFilePath(const QString &filepath)
     d_ptr->outFilepath = filepath;
 }
 
-void Transcoder::setAudioEncodecID(AVCodecID codecID)
+void Transcoder::setVideoEncodeContext(const EncodeContext &encodeContext)
 {
-    d_ptr->audioEncoderName = avcodec_get_name(codecID);
+    d_ptr->videoEncodeContext = encodeContext;
 }
 
-void Transcoder::setVideoEnCodecID(AVCodecID codecID)
+void Transcoder::setAudioEncodeContext(const EncodeContext &encodeContext)
 {
-    d_ptr->videoEncoderName = avcodec_get_name(codecID);
+    d_ptr->audioEncodeContext = encodeContext;
 }
 
-void Transcoder::setAudioEncodecName(const QString &name)
+void Transcoder::setRange(const QPair<qint64, qint64> &range)
 {
-    d_ptr->audioEncoderName = name;
-}
-
-void Transcoder::setVideoEncodecName(const QString &name)
-{
-    d_ptr->videoEncoderName = name;
-}
-
-void Transcoder::setSize(const QSize &size)
-{
-    d_ptr->size = size;
+    d_ptr->range = range;
 }
 
 void Transcoder::setSubtitleFilename(const QString &filename)
@@ -632,74 +589,6 @@ void Transcoder::setSubtitleFilename(const QString &filename)
     if (index > 0) {
         d_ptr->subtitleFilename.insert(index, ('\\'));
     }
-}
-
-void Transcoder::setQuailty(int quailty)
-{
-    d_ptr->quailty = quailty;
-}
-
-void Transcoder::setMinBitrate(int64_t bitrate)
-{
-    d_ptr->minBitrate = bitrate;
-}
-
-void Transcoder::setMaxBitrate(int64_t bitrate)
-{
-    d_ptr->maxBitrate = bitrate;
-}
-
-void Transcoder::setCrf(int crf)
-{
-    d_ptr->crf = crf;
-}
-
-void Transcoder::setPreset(const QString &preset)
-{
-    Q_ASSERT(d_ptr->presets.contains(preset));
-    d_ptr->preset = preset;
-}
-
-auto Transcoder::preset() const -> QString
-{
-    return d_ptr->preset;
-}
-
-auto Transcoder::presets() const -> QStringList
-{
-    return d_ptr->presets;
-}
-
-void Transcoder::setTune(const QString &tune)
-{
-    Q_ASSERT(d_ptr->tunes.contains(tune));
-    d_ptr->tune = tune;
-}
-
-auto Transcoder::tune() const -> QString
-{
-    return d_ptr->tune;
-}
-
-auto Transcoder::tunes() const -> QStringList
-{
-    return d_ptr->tunes;
-}
-
-void Transcoder::setProfile(const QString &profile)
-{
-    Q_ASSERT(d_ptr->profiles.contains(profile));
-    d_ptr->profile = profile;
-}
-
-auto Transcoder::profile() const -> QString
-{
-    return d_ptr->profile;
-}
-
-auto Transcoder::profiles() const -> QStringList
-{
-    return d_ptr->profiles;
 }
 
 void Transcoder::startTranscode()
@@ -750,19 +639,21 @@ void Transcoder::run()
     timer.start();
     qInfo() << "Start Transcoding";
     d_ptr->reset();
-    if (!d_ptr->openInputFile()) {
-        qWarning() << "Open input file failed!";
+    if (!d_ptr->openInputFile(false)) {
+        d_ptr->addPropertyChangeEvent(new ErrorEvent(tr("Open input file failed!")));
         return;
     }
     if (!d_ptr->openOutputFile()) {
-        qWarning() << "Open ouput file failed!";
+        d_ptr->addPropertyChangeEvent(new ErrorEvent(tr("Open ouput file failed!")));
         return;
     }
     d_ptr->initAudioFifo();
     d_ptr->loop();
     d_ptr->cleanup();
-    qInfo() << "Finish Transcoding: "
-            << QTime::fromMSecsSinceStartOfDay(timer.elapsed()).toString("hh:mm:ss.zzz");
+
+    auto text = tr("Finish Transcoding: %1.")
+                    .arg(QTime::fromMSecsSinceStartOfDay(timer.elapsed()).toString("hh:mm:ss.zzz"));
+    qInfo() << text;
 }
 
 } // namespace Ffmpeg

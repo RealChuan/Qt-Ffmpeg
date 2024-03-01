@@ -27,6 +27,7 @@ SOURCES += \
     codeccontext.cpp \
     colorutils.cc \
     decoder.cc \
+    encodecontext.cc \
     ffmpegutils.cc \
     formatcontext.cpp \
     frame.cc \
@@ -57,6 +58,7 @@ HEADERS += \
     codeccontext.h \
     colorutils.hpp \
     decoder.h \
+    encodecontext.hpp \
     ffmepg_global.h \
     ffmpegutils.hpp \
     formatcontext.h \

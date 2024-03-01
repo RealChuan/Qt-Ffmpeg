@@ -65,7 +65,8 @@ public:
         videoTracksGroup->setExclusive(true);
         subTracksGroup = new QActionGroup(q_ptr);
         subTracksGroup->setExclusive(true);
-        mediaInfoAction = new QAction(QObject::tr("Media Info"), q_ptr);
+        mediaInfoAction = new QAction(QCoreApplication::translate("MainWindowPrivate", "Media Info"),
+                                      q_ptr);
 
         playListMenu = new QMenu(q_ptr);
 
@@ -106,11 +107,17 @@ public:
         if (!subTracksMenuPtr.isNull()) {
             delete subTracksMenuPtr.data();
         }
-        audioTracksMenuPtr = new QMenu(QObject::tr("Select audio track"), q_ptr);
-        videoTracksMenuPtr = new QMenu(QObject::tr("Select video track"), q_ptr);
-        subTracksMenuPtr = new QMenu(QObject::tr("Select subtitle track"), q_ptr);
-        menu->addMenu(audioTracksMenuPtr.data());
+        audioTracksMenuPtr = new QMenu(QCoreApplication::translate("MainWindowPrivate",
+                                                                   "Select audio track"),
+                                       q_ptr);
+        videoTracksMenuPtr = new QMenu(QCoreApplication::translate("MainWindowPrivate",
+                                                                   "Select video track"),
+                                       q_ptr);
+        subTracksMenuPtr = new QMenu(QCoreApplication::translate("MainWindowPrivate",
+                                                                 "Select subtitle track"),
+                                     q_ptr);
         menu->addMenu(videoTracksMenuPtr.data());
+        menu->addMenu(audioTracksMenuPtr.data());
         menu->addMenu(subTracksMenuPtr.data());
 
         menu->removeAction(mediaInfoAction);
@@ -412,7 +419,7 @@ void MainWindow::onProcessEvents()
             auto *speedEvent = dynamic_cast<Ffmpeg::CacheSpeedEvent *>(eventPtr.data());
             d_ptr->controlWidget->setCacheSpeed(speedEvent->speed());
         } break;
-        case Ffmpeg::PropertyChangeEvent::MediaTrack: {
+        case Ffmpeg::PropertyChangeEvent::EventType::MediaTrack: {
             d_ptr->resetTrackMenu();
 
             auto *tracksEvent = dynamic_cast<Ffmpeg::MediaTrackEvent *>(eventPtr.data());
@@ -444,7 +451,7 @@ void MainWindow::onProcessEvents()
                 }
             }
         } break;
-        case Ffmpeg::PropertyChangeEvent::SeekChanged: {
+        case Ffmpeg::PropertyChangeEvent::EventType::SeekChanged: {
             auto *seekEvent = dynamic_cast<Ffmpeg::SeekChangedEvent *>(eventPtr.data());
             int value = seekEvent->position() * 100 / d_ptr->playerPtr->duration();
             auto text = tr("Seeked To %1 (key frame) / %2 (%3%)")
@@ -455,8 +462,8 @@ void MainWindow::onProcessEvents()
                                  QString::number(value));
             d_ptr->setTitleWidgetText(text);
         } break;
-        case Ffmpeg::PropertyChangeEvent::Error: {
-            auto *errorEvent = dynamic_cast<Ffmpeg::ErrorEvent *>(eventPtr.data());
+        case Ffmpeg::PropertyChangeEvent::EventType::AVError: {
+            auto *errorEvent = dynamic_cast<Ffmpeg::AVErrorEvent *>(eventPtr.data());
             const auto text = tr("Error[%1]:%2.")
                                   .arg(QString::number(errorEvent->error().errorCode()),
                                        errorEvent->error().errorString());
@@ -641,19 +648,19 @@ void MainWindow::initMenu()
     renderMenu();
 
     connect(d_ptr->audioTracksGroup, &QActionGroup::triggered, this, [this](QAction *action) {
-        d_ptr->playerPtr->addEvent(
-            Ffmpeg::EventPtr(new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
-                                                                 Ffmpeg::Event::AudioTarck)));
+        d_ptr->playerPtr->addEvent(Ffmpeg::EventPtr(
+            new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
+                                                Ffmpeg::Event::EventType::AudioTarck)));
     });
     connect(d_ptr->videoTracksGroup, &QActionGroup::triggered, this, [this](QAction *action) {
-        d_ptr->playerPtr->addEvent(
-            Ffmpeg::EventPtr(new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
-                                                                 Ffmpeg::Event::VideoTrack)));
+        d_ptr->playerPtr->addEvent(Ffmpeg::EventPtr(
+            new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
+                                                Ffmpeg::Event::EventType::VideoTrack)));
     });
     connect(d_ptr->subTracksGroup, &QActionGroup::triggered, this, [this](QAction *action) {
-        d_ptr->playerPtr->addEvent(
-            Ffmpeg::EventPtr(new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
-                                                                 Ffmpeg::Event::SubtitleTrack)));
+        d_ptr->playerPtr->addEvent(Ffmpeg::EventPtr(
+            new Ffmpeg::SelectedMediaTrackEvent(action->property("index").toInt(),
+                                                Ffmpeg::Event::EventType::SubtitleTrack)));
     });
 
     connect(d_ptr->mediaInfoAction, &QAction::triggered, this, &MainWindow::onShowMediaInfo);

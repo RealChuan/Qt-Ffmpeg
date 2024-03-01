@@ -1,6 +1,8 @@
 #ifndef VIDEOENCODERWIDGET_HPP
 #define VIDEOENCODERWIDGET_HPP
 
+#include <ffmpeg/encodecontext.hpp>
+
 #include <QWidget>
 
 extern "C" {
@@ -15,28 +17,10 @@ public:
     ~VideoEncoderWidget() override;
 
     auto setEncoder(AVCodecID codecId) -> bool;
-    [[nodiscard]] auto encoder() const -> QString;
-
-    void setPreset(const QStringList &presets, const QString &current);
-    [[nodiscard]] auto preset() const -> QString;
-
-    void setTune(const QStringList &tunes, const QString &current);
-    [[nodiscard]] auto tune() const -> QString;
-
-    void setProfile(const QStringList &profiles, const QString &current);
-    [[nodiscard]] auto profile() const -> QString;
 
     void setVideoSize(const QSize &size);
-    [[nodiscard]] auto videoSize() const -> QSize;
 
-    [[nodiscard]] auto quality() const -> int;
-    [[nodiscard]] auto crf() const -> int;
-
-    [[nodiscard]] auto minBitrate() const -> int;
-    [[nodiscard]] auto maxBitrate() const -> int;
-
-    [[nodiscard]] auto gpuEncode() const -> bool;
-    [[nodiscard]] auto gpuDecode() const -> bool;
+    [[nodiscard]] auto encodeParam() const -> Ffmpeg::EncodeContext;
 
 private slots:
     void onEncoderChanged();

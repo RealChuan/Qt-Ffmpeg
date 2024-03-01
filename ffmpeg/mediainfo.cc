@@ -123,13 +123,19 @@ auto StreamInfo::info() const -> QString
     if (bitRate > 0) {
         text += "-" + QString::number(bitRate);
     }
-    text += "-" + format;
+    if (!format.isEmpty()) {
+        text += "-" + format;
+    }
 
     switch (mediaType) {
-    case AVMEDIA_TYPE_AUDIO: text += "-" + chLayout + "-" + QString::number(sampleRate); break;
+    case AVMEDIA_TYPE_AUDIO:
+        text += QString("-%1-%2hz").arg(chLayout, QString::number(sampleRate));
+        break;
     case AVMEDIA_TYPE_VIDEO:
-        text += "-" + QString::number(frameRate) + "-" + QString::number(size.width()) + "x"
-                + QString::number(size.height());
+        text += QString("-%1fps-[%2x%3]")
+                    .arg(QString::number(frameRate),
+                         QString::number(size.width()),
+                         QString::number(size.height()));
         break;
     default: break;
     }
@@ -175,9 +181,10 @@ MediaInfo::MediaInfo(AVFormatContext *formatCtx)
     url = formatCtx->url;
     startTime = formatCtx->start_time;
     startTimeText = QTime::fromMSecsSinceStartOfDay(formatCtx->start_time / 1000)
-                    .toString("hh:mm:ss.zzz");
+                        .toString("hh:mm:ss.zzz");
     duration = formatCtx->duration;
-    durationText = QTime::fromMSecsSinceStartOfDay(formatCtx->duration / 1000).toString("hh:mm:ss.zzz");
+    durationText = QTime::fromMSecsSinceStartOfDay(formatCtx->duration / 1000)
+                       .toString("hh:mm:ss.zzz");
     bitRate = formatCtx->bit_rate;
     size = duration / AV_TIME_BASE * bitRate / 8;
 

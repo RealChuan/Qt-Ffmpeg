@@ -1,5 +1,6 @@
 #include "videoencoderwidget.hpp"
 
+#include <ffmpeg/avcontextinfo.h>
 #include <ffmpeg/ffmpegutils.hpp>
 
 #include <QtWidgets>
@@ -15,31 +16,25 @@ public:
         videoEncoderCbx->setView(new QListView(videoEncoderCbx));
         videoEncoderCbx->setMaxVisibleItems(10);
         videoEncoderCbx->setStyleSheet(comboBoxStyleSheet);
-        auto videoCodecs = Ffmpeg::getCurrentSupportCodecs(AVMEDIA_TYPE_VIDEO, true);
-        for (auto iter = videoCodecs.cbegin(); iter != videoCodecs.cend(); ++iter) {
-            videoEncoderCbx->addItem(iter.value(), iter.key());
+        auto videoCodecs = Ffmpeg::getCodecsInfo(AVMEDIA_TYPE_VIDEO, true);
+        for (const auto &codec : std::as_const(videoCodecs)) {
+            auto text = QString("%1 (%2)").arg(codec.longName).arg(codec.name);
+            videoEncoderCbx->addItem(text, QVariant::fromValue(codec));
+            if (codec.codecId == AV_CODEC_ID_H264) {
+                videoEncoderCbx->setCurrentText(text);
+            }
         }
-        videoEncoderCbx->setCurrentIndex(videoEncoderCbx->findData(AV_CODEC_ID_H264));
         videoEncoderCbx->model()->sort(0);
 
-        gpuEncodeCbx = new QCheckBox(QCoreApplication::translate("VideoEncoderWidgetPrivate",
-                                                                 "Use GPU Encode"),
-                                     q_ptr);
-        gpuEncodeCbx->setChecked(true);
         gpuDecodeCbx = new QCheckBox(QCoreApplication::translate("VideoEncoderWidgetPrivate",
                                                                  "Use GPU Decode"),
                                      q_ptr);
         gpuDecodeCbx->setChecked(true);
 
-        quailtySbx = new QSpinBox(q_ptr);
-        quailtySbx->setRange(2, 31);
-        quailtySbx->setToolTip(
-            QCoreApplication::translate("VideoEncoderWidgetPrivate", "smaller -> better"));
         crfSbx = new QSpinBox(q_ptr);
-        crfSbx->setRange(0, 51);
         crfSbx->setToolTip(
             QCoreApplication::translate("VideoEncoderWidgetPrivate", "smaller -> better"));
-        crfSbx->setValue(18);
+
         presetCbx = new QComboBox(q_ptr);
         presetCbx->setView(new QListView(presetCbx));
         tuneCbx = new QComboBox(q_ptr);
@@ -60,6 +55,8 @@ public:
         minBitrateSbx->setRange(0, INT_MAX);
         maxBitrateSbx = new QSpinBox(q_ptr);
         maxBitrateSbx->setRange(0, INT_MAX);
+
+        init();
     }
 
     void calBitrate() const
@@ -70,13 +67,34 @@ public:
         maxBitrateSbx->setValue(w * h * 4);
     }
 
+    void init() const
+    {
+        Ffmpeg::EncodeContext encodeParam;
+
+        presetCbx->clear();
+        presetCbx->addItems(Ffmpeg::EncodeLimit::presets);
+        presetCbx->setCurrentText(encodeParam.preset);
+
+        tuneCbx->clear();
+        tuneCbx->addItems(Ffmpeg::EncodeLimit::tunes);
+        tuneCbx->setCurrentText(encodeParam.tune);
+
+        profileCbx->clear();
+
+        crfSbx->setRange(Ffmpeg::EncodeLimit::crf_min, Ffmpeg::EncodeLimit::crf_max);
+        crfSbx->setValue(encodeParam.crf);
+    }
+
+    [[nodiscard]] auto currentCodecName() const -> QString
+    {
+        return videoEncoderCbx->currentData().value<Ffmpeg::CodecInfo>().name;
+    }
+
     VideoEncoderWidget *q_ptr;
 
     QComboBox *videoEncoderCbx;
-    QCheckBox *gpuEncodeCbx;
     QCheckBox *gpuDecodeCbx;
 
-    QSpinBox *quailtySbx;
     QSpinBox *crfSbx;
     QComboBox *presetCbx;
     QComboBox *tuneCbx;
@@ -98,59 +116,20 @@ VideoEncoderWidget::VideoEncoderWidget(QWidget *parent)
 {
     setupUI();
     buildConnect();
+    onEncoderChanged();
 }
 
 VideoEncoderWidget::~VideoEncoderWidget() = default;
 
 auto VideoEncoderWidget::setEncoder(AVCodecID codecId) -> bool
 {
-    auto index = d_ptr->videoEncoderCbx->findData(codecId);
+    Ffmpeg::CodecInfo codec{"", "", codecId};
+    auto index = d_ptr->videoEncoderCbx->findData(QVariant::fromValue(codec));
     auto finded = (index >= 0);
     if (finded) {
         d_ptr->videoEncoderCbx->setCurrentIndex(index);
     }
     return finded;
-}
-
-auto VideoEncoderWidget::encoder() const -> QString
-{
-    return d_ptr->videoEncoderCbx->currentText();
-}
-
-void VideoEncoderWidget::setPreset(const QStringList &presets, const QString &current)
-{
-    d_ptr->presetCbx->clear();
-    d_ptr->presetCbx->addItems(presets);
-    d_ptr->presetCbx->setCurrentText(current);
-}
-
-auto VideoEncoderWidget::preset() const -> QString
-{
-    return d_ptr->presetCbx->currentText();
-}
-
-void VideoEncoderWidget::setTune(const QStringList &tunes, const QString &current)
-{
-    d_ptr->tuneCbx->clear();
-    d_ptr->tuneCbx->addItems(tunes);
-    d_ptr->tuneCbx->setCurrentText(current);
-}
-
-auto VideoEncoderWidget::tune() const -> QString
-{
-    return d_ptr->tuneCbx->currentText();
-}
-
-void VideoEncoderWidget::setProfile(const QStringList &profiles, const QString &current)
-{
-    d_ptr->profileCbx->clear();
-    d_ptr->profileCbx->addItems(profiles);
-    d_ptr->profileCbx->setCurrentText(current);
-}
-
-auto VideoEncoderWidget::profile() const -> QString
-{
-    return d_ptr->profileCbx->currentText();
 }
 
 void VideoEncoderWidget::setVideoSize(const QSize &size)
@@ -166,48 +145,36 @@ void VideoEncoderWidget::setVideoSize(const QSize &size)
     d_ptr->calBitrate();
 }
 
-auto VideoEncoderWidget::videoSize() const -> QSize
+auto VideoEncoderWidget::encodeParam() const -> Ffmpeg::EncodeContext
 {
-    return {d_ptr->widthSbx->value(), d_ptr->heightSbx->value()};
-}
+    Ffmpeg::EncodeContext encodeParam;
+    encodeParam.mediaType = AVMEDIA_TYPE_VIDEO;
+    encodeParam.encoderName = d_ptr->currentCodecName();
+    encodeParam.size = {d_ptr->widthSbx->value(), d_ptr->heightSbx->value()};
+    encodeParam.gpuDecode = d_ptr->gpuDecodeCbx->isChecked();
+    encodeParam.minBitrate = d_ptr->minBitrateSbx->value();
+    encodeParam.maxBitrate = d_ptr->maxBitrateSbx->value();
+    encodeParam.bitrate = d_ptr->maxBitrateSbx->value();
+    encodeParam.crf = d_ptr->crfSbx->value();
+    encodeParam.preset = d_ptr->presetCbx->currentText();
+    encodeParam.tune = d_ptr->tuneCbx->currentText();
+    // encodeParam.profile = d_ptr->profileCbx->currentText();
 
-auto VideoEncoderWidget::quality() const -> int
-{
-    return d_ptr->quailtySbx->value();
-}
-
-auto VideoEncoderWidget::minBitrate() const -> int
-{
-    return d_ptr->minBitrateSbx->value();
-}
-
-auto VideoEncoderWidget::gpuEncode() const -> bool
-{
-    return d_ptr->gpuEncodeCbx->isChecked();
-}
-
-auto VideoEncoderWidget::gpuDecode() const -> bool
-{
-    return d_ptr->gpuDecodeCbx->isChecked();
-}
-
-auto VideoEncoderWidget::maxBitrate() const -> int
-{
-    return d_ptr->maxBitrateSbx->value();
-}
-
-auto VideoEncoderWidget::crf() const -> int
-{
-    return d_ptr->crfSbx->value();
+    return encodeParam;
 }
 
 void VideoEncoderWidget::onEncoderChanged()
 {
-    auto quantizer = Ffmpeg::getCodecQuantizer(d_ptr->videoEncoderCbx->currentText());
-    if (quantizer.first < 0 || quantizer.second < 0) {
+    d_ptr->profileCbx->clear();
+
+    QScopedPointer<Ffmpeg::AVContextInfo> contextInfoPtr(new Ffmpeg::AVContextInfo);
+    if (!contextInfoPtr->initEncoder(d_ptr->currentCodecName())) {
         return;
     }
-    d_ptr->quailtySbx->setRange(quantizer.first, quantizer.second);
+    auto profiles = contextInfoPtr->profiles();
+    for (const auto &profile : std::as_const(profiles)) {
+        d_ptr->profileCbx->addItem(profile.name, profile.profile);
+    }
 }
 
 void VideoEncoderWidget::onVideoWidthChanged()
@@ -243,12 +210,10 @@ void VideoEncoderWidget::setupUI()
     codecLayout->addWidget(new QLabel(tr("Encoder:"), this));
     codecLayout->addWidget(d_ptr->videoEncoderCbx);
     codecLayout->addStretch();
-    codecLayout->addWidget(d_ptr->gpuEncodeCbx);
     codecLayout->addWidget(d_ptr->gpuDecodeCbx);
 
     auto *invailedGroupBox = new QGroupBox(tr("Invalid setting"), this);
     auto *invailedLayout = new QFormLayout(invailedGroupBox);
-    invailedLayout->addRow(tr("Quality:"), d_ptr->quailtySbx);
     invailedLayout->addRow(tr("Crf:"), d_ptr->crfSbx);
     invailedLayout->addRow(tr("Preset:"), d_ptr->presetCbx);
     invailedLayout->addRow(tr("Tune:"), d_ptr->tuneCbx);
@@ -275,7 +240,7 @@ void VideoEncoderWidget::setupUI()
 void VideoEncoderWidget::buildConnect()
 {
     connect(d_ptr->videoEncoderCbx,
-            &QComboBox::currentTextChanged,
+            &QComboBox::currentIndexChanged,
             this,
             &VideoEncoderWidget::onEncoderChanged);
     connect(d_ptr->widthSbx,

@@ -17,6 +17,8 @@ public:
 
     void setFileInfo(const QString &info);
 
+    auto range() const -> QPair<qint64, qint64>;
+
 private slots:
     void onRangeChanged();
 

@@ -3,10 +3,11 @@
 
 #include "ffmepg_global.h"
 
+#include <QMetaType>
 #include <QSize>
 
 extern "C" {
-#include <libavcodec/codec_id.h>
+#include <libavcodec/codec.h>
 #include <libavutil/hwcontext.h>
 }
 
@@ -34,11 +35,31 @@ auto compareAVRational(const AVRational &a, const AVRational &b) -> bool;
 
 auto getMetaDatas(AVDictionary *metadata) -> Metadatas;
 
-auto FFMPEG_EXPORT getCodecQuantizer(const QString &codecname) -> QPair<int, int>;
+struct CodecInfo
+{
+    auto operator==(const CodecInfo &other) const -> bool { return codecId == other.codecId; }
+    auto operator!=(const CodecInfo &other) const -> bool { return !(*this == other); }
 
-auto FFMPEG_EXPORT getCurrentSupportCodecs(AVMediaType mediaType, bool encoder)
-    -> QMap<AVCodecID, QString>;
+    QString name;
+    QString longName;
+    enum AVCodecID codecId;
+};
+
+using CodecInfos = QVector<CodecInfo>;
+
+auto FFMPEG_EXPORT getCodecsInfo(AVMediaType mediaType, bool encoder) -> CodecInfos;
+
+struct FFMPEG_EXPORT ChLayout
+{
+    AVChannel channel;
+    QString channelName;
+};
+using ChLayouts = QVector<ChLayout>;
+
+auto FFMPEG_EXPORT getChLayouts(const QVector<AVChannelLayout> &channelLayout) -> ChLayouts;
 
 } // namespace Ffmpeg
+
+Q_DECLARE_METATYPE(Ffmpeg::CodecInfo);
 
 #endif // FFMPEGUTILS_HPP

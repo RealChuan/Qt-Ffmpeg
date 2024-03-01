@@ -15,7 +15,7 @@ extern "C" {
 
 namespace Ffmpeg {
 
-auto TranscoderContext::init_filter(const QString &filter_spec, Frame *frame) const -> bool
+auto TranscoderContext::initFilter(const QString &filter_spec, Frame *frame) const -> bool
 {
     if (filterPtr->isInitialized()) {
         return true;

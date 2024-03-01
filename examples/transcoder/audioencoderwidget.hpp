@@ -1,6 +1,8 @@
 #ifndef AUDIOENCODERWIDGET_HPP
 #define AUDIOENCODERWIDGET_HPP
 
+#include <ffmpeg/encodecontext.hpp>
+
 #include <QWidget>
 
 extern "C" {
@@ -15,7 +17,11 @@ public:
     ~AudioEncoderWidget() override;
 
     auto setEncoder(AVCodecID codecId) -> bool;
-    [[nodiscard]] auto encoder() const -> QString;
+
+    [[nodiscard]] auto encodeParam() const -> Ffmpeg::EncodeContext;
+
+private slots:
+    void onEncoderChanged();
 
 private:
     void setupUI();
