@@ -3,7 +3,7 @@
 -   [Simplified Chinese](README.md)
 -   [English](README.en.md)
 
-## QFfmpegPlayer
+## Player
 
 <div align=center><img src="doc/player.jpeg"></div>
 
@@ -22,9 +22,9 @@
 
 #### 1. How to modify the shader when rendering with opengl?
 
-1.  reference[MPV video_shaders](https://github.com/mpv-player/mpv/blob/master/video/out/gpu/video_shaders.c)；
+1.  参考[MPV video_shaders](https://github.com/mpv-player/mpv/blob/master/video/out/gpu/video_shaders.c)；
 
-#### 2. 非opengl渲染的情况下，又该怎么样添加filter实现图像补偿？
+#### 2. In the case of non-opengl rendering, how to add a filter to achieve image compensation?
 
 ```bash
 zscale=p=709;
@@ -40,7 +40,7 @@ zscale=p=709;
 0,,en,,0000,0000,0000,,Peek-a-boo!
 ```
 
-you have to use`ass_process_chunk`and set pts and duration as in libavfilter/vf_subtitles.c.
+you have to use`ass_process_chunk`and set pts and duration, and in[vf_subtitles.c](https://github.com/FFmpeg/FFmpeg/blob/master/libavfilter/vf_subtitles.c#L490)Same as in.
 
 #### The ASS standard format should be (ffmpeg-n4.4.3)
 
@@ -56,24 +56,11 @@ use`ass_process_data`;
 subtitles=filename='%1':original_size=%2x%3
 ```
 
-## QFfmpegTranscoder
+## Transcoder
 
 How to set encoding parameters to get smaller files and better video quality?
 
-1.  Set a very high bitrate;
-
-2.  Set up the encoder`global_quality`invalid. code show as below:
-
-    ```C++
-    d_ptr->codecCtx->flags |= AV_CODEC_FLAG_QSCALE;
-    d_ptr->codecCtx->global_quality = FF_QP2LAMBDA * quailty;
-    ```
-
-3.  set up`crf`invalid. code show as below:
-
-    ```C++
-    av_opt_set_int(d_ptr->codecCtx, "crf", crf, AV_OPT_SEARCH_CHILDREN);
-    ```
+1.  reference[HandBrake encavcodec](https://github.com/HandBrake/HandBrake/blob/master/libhb/encavcodec.c#L359)
 
 ### How to calculate pts from frames obtained by AVAudioFifo?
 
@@ -90,7 +77,7 @@ transcodeCtx->audioPts += frame->nb_samples;
 
 ## QT-BUG
 
-#### Dynamically switching Video Render, switching from opengl to widget, still consumes GPU 0-3D, and the usage is twice that of opengl! ! ! QT-BUG?
+### Dynamically switching Video Render, switching from opengl to widget, still consumes GPU 0-3D, and the usage is twice that of opengl! ! ! QT-BUG?
 
 ### QOpenGLWidget memory leaks, moves to zoom in and out the window, the code is as follows
 
