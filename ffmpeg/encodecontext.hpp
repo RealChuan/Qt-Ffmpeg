@@ -1,7 +1,7 @@
 #ifndef ENCODECONTEXT_HPP
 #define ENCODECONTEXT_HPP
 
-#include "ffmepg_global.h"
+#include "ffmpegutils.hpp"
 
 #include <QtCore>
 
@@ -37,11 +37,22 @@ static const QStringList tunes = QStringList{"film",
                                              "zerolatency"};
 
 } // namespace EncodeLimit
-struct EncodeContext
+struct FFMPEG_EXPORT EncodeContext
 {
-    AVMediaType mediaType;
+    EncodeContext() = default;
+    explicit EncodeContext(int streamIndex, AVContextInfo *info);
 
-    QString encoderName;
+    void setEncoderName(const QString &name);
+    [[nodiscard]] auto codecInfo() const -> CodecInfo { return m_codecInfo; }
+
+    void setChannel(AVChannel channel);
+    [[nodiscard]] auto chLayout() const -> ChLayout { return m_chLayout; }
+
+    void setProfile(int profile);
+    [[nodiscard]] auto profile() const -> AVProfile { return m_profile; }
+
+    int streamIndex = -1;
+    AVMediaType mediaType;
 
     qint64 minBitrate = -1;
     qint64 maxBitrate = -1;
@@ -55,13 +66,22 @@ struct EncodeContext
 
     QString preset = "slow";
     QString tune = "film";
-    int profile = 0;
 
     QSize size = {-1, -1};
 
-    AVChannel channel;
+    ChLayouts chLayouts;
+    QVector<AVProfile> profiles;
+
+private:
+    CodecInfo m_codecInfo;
+    ChLayout m_chLayout;
+    AVProfile m_profile;
 };
 
+using EncodeContexts = QVector<EncodeContext>;
+
 } // namespace Ffmpeg
+
+Q_DECLARE_METATYPE(Ffmpeg::EncodeContext);
 
 #endif // ENCODECONTEXT_HPP

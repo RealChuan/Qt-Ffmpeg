@@ -15,6 +15,8 @@ LIBS += \
 include(../../3rdparty/3rdparty.pri)
 
 SOURCES += \
+    audioencodermodel.cc \
+    audioencodertableview.cc \
     audioencoderwidget.cc \
     main.cc \
     mainwindow.cc \
@@ -22,15 +24,19 @@ SOURCES += \
     previewwidget.cc \
     sourcewidget.cc \
     stautuswidget.cc \
+    styleditemdelegate.cc \
     videoencoderwidget.cc
 
 HEADERS += \
+    audioencodermodel.hpp \
+    audioencodertableview.hpp \
     audioencoderwidget.hpp \
     mainwindow.hpp \
     outputwidget.hpp \
     previewwidget.hpp \
     sourcewidget.hpp \
     stautuswidget.hpp \
+    styleditemdelegate.hpp \
     videoencoderwidget.hpp
 
 DESTDIR = $$APP_OUTPUT_PATH

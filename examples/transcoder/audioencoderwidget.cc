@@ -1,4 +1,5 @@
 #include "audioencoderwidget.hpp"
+#include "audioencodertableview.hpp"
 
 #include <ffmpeg/avcontextinfo.h>
 #include <ffmpeg/ffmpegutils.hpp>
@@ -19,10 +20,9 @@ public:
         audioEncoderCbx->setStyleSheet(comboBoxStyleSheet);
         auto audioEncodercs = Ffmpeg::getCodecsInfo(AVMEDIA_TYPE_AUDIO, true);
         for (const auto &codec : std::as_const(audioEncodercs)) {
-            auto text = QString("%1 (%2)").arg(codec.longName).arg(codec.name);
-            audioEncoderCbx->addItem(text, QVariant::fromValue(codec));
+            audioEncoderCbx->addItem(codec.displayName, QVariant::fromValue(codec));
             if (codec.codecId == AV_CODEC_ID_AAC) {
-                audioEncoderCbx->setCurrentText(text);
+                audioEncoderCbx->setCurrentText(codec.displayName);
             }
         }
         audioEncoderCbx->model()->sort(0);
@@ -49,10 +49,12 @@ public:
         maxBitrateSbx->setRange(0, INT_MAX);
         maxBitrateSbx->setValue(defaultBitrate);
 
+        audioEncoderTable = new AudioEncoderTableView(q_ptr);
+
         init();
     }
 
-    void init()
+    void init() const
     {
         Ffmpeg::EncodeContext encodeParam;
 
@@ -76,6 +78,8 @@ public:
 
     QSpinBox *minBitrateSbx;
     QSpinBox *maxBitrateSbx;
+
+    AudioEncoderTableView *audioEncoderTable;
 };
 
 AudioEncoderWidget::AudioEncoderWidget(QWidget *parent)
@@ -89,29 +93,14 @@ AudioEncoderWidget::AudioEncoderWidget(QWidget *parent)
 
 AudioEncoderWidget::~AudioEncoderWidget() = default;
 
-auto AudioEncoderWidget::setEncoder(AVCodecID codecId) -> bool
+void AudioEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContexts &decodeContexts)
 {
-    Ffmpeg::CodecInfo codec{"", "", codecId};
-    auto index = d_ptr->audioEncoderCbx->findData(QVariant::fromValue(codec));
-    auto finded = (index >= 0);
-    if (finded) {
-        d_ptr->audioEncoderCbx->setCurrentIndex(index);
-    }
-    return finded;
+    d_ptr->audioEncoderTable->setDatas(decodeContexts);
 }
 
-auto AudioEncoderWidget::encodeParam() const -> Ffmpeg::EncodeContext
+auto AudioEncoderWidget::encodeContexts() const -> Ffmpeg::EncodeContexts
 {
-    Ffmpeg::EncodeContext encodeParam;
-    encodeParam.mediaType = AVMEDIA_TYPE_AUDIO;
-    encodeParam.encoderName = d_ptr->currentCodecName();
-    encodeParam.channel = static_cast<AVChannel>(d_ptr->chLayoutCbx->currentData().toLongLong());
-    encodeParam.crf = d_ptr->crfSbx->value();
-    encodeParam.minBitrate = d_ptr->minBitrateSbx->value();
-    encodeParam.maxBitrate = d_ptr->maxBitrateSbx->value();
-    encodeParam.bitrate = d_ptr->maxBitrateSbx->value();
-
-    return encodeParam;
+    return d_ptr->audioEncoderTable->datas();
 }
 
 void AudioEncoderWidget::onEncoderChanged()
@@ -155,6 +144,7 @@ void AudioEncoderWidget::setupUI()
     layout->addRow(tr("Encoder:"), d_ptr->audioEncoderCbx);
     layout->addRow(tr("Channel Layout:"), d_ptr->chLayoutCbx);
     layout->addRow(hLayout);
+    layout->addRow(d_ptr->audioEncoderTable);
 }
 
 void AudioEncoderWidget::buildConnect()

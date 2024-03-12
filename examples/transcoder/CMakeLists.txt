@@ -1,4 +1,8 @@
 set(PROJECT_SOURCES
+    audioencodermodel.cc
+    audioencodermodel.hpp
+    audioencodertableview.cc
+    audioencodertableview.hpp
     audioencoderwidget.cc
     audioencoderwidget.hpp
     main.cc
@@ -12,6 +16,8 @@ set(PROJECT_SOURCES
     sourcewidget.hpp
     stautuswidget.cc
     stautuswidget.hpp
+    styleditemdelegate.cc
+    styleditemdelegate.hpp
     videoencoderwidget.cc
     videoencoderwidget.hpp)
 

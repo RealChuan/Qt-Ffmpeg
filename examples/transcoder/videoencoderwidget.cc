@@ -18,10 +18,9 @@ public:
         videoEncoderCbx->setStyleSheet(comboBoxStyleSheet);
         auto videoCodecs = Ffmpeg::getCodecsInfo(AVMEDIA_TYPE_VIDEO, true);
         for (const auto &codec : std::as_const(videoCodecs)) {
-            auto text = QString("%1 (%2)").arg(codec.longName).arg(codec.name);
-            videoEncoderCbx->addItem(text, QVariant::fromValue(codec));
+            videoEncoderCbx->addItem(codec.displayName, QVariant::fromValue(codec));
             if (codec.codecId == AV_CODEC_ID_H264) {
-                videoEncoderCbx->setCurrentText(text);
+                videoEncoderCbx->setCurrentText(codec.displayName);
             }
         }
         videoEncoderCbx->model()->sort(0);
@@ -55,6 +54,8 @@ public:
         minBitrateSbx->setRange(0, INT_MAX);
         maxBitrateSbx = new QSpinBox(q_ptr);
         maxBitrateSbx->setRange(0, INT_MAX);
+        bitrateSbx = new QSpinBox(q_ptr);
+        bitrateSbx->setRange(0, INT_MAX);
 
         init();
     }
@@ -65,6 +66,7 @@ public:
         auto h = heightSbx->value();
         minBitrateSbx->setValue(w * h);
         maxBitrateSbx->setValue(w * h * 4);
+        bitrateSbx->setValue(w * h * 4);
     }
 
     void init() const
@@ -106,6 +108,7 @@ public:
 
     QSpinBox *minBitrateSbx;
     QSpinBox *maxBitrateSbx;
+    QSpinBox *bitrateSbx;
 
     QSize originalSize;
 };
@@ -121,46 +124,48 @@ VideoEncoderWidget::VideoEncoderWidget(QWidget *parent)
 
 VideoEncoderWidget::~VideoEncoderWidget() = default;
 
-auto VideoEncoderWidget::setEncoder(AVCodecID codecId) -> bool
-{
-    Ffmpeg::CodecInfo codec{"", "", codecId};
-    auto index = d_ptr->videoEncoderCbx->findData(QVariant::fromValue(codec));
-    auto finded = (index >= 0);
-    if (finded) {
-        d_ptr->videoEncoderCbx->setCurrentIndex(index);
-    }
-    return finded;
-}
-
-void VideoEncoderWidget::setVideoSize(const QSize &size)
-{
-    d_ptr->widthSbx->blockSignals(true);
-    d_ptr->heightSbx->blockSignals(true);
-    d_ptr->widthSbx->setValue(size.width());
-    d_ptr->heightSbx->setValue(size.height());
-    d_ptr->widthSbx->blockSignals(false);
-    d_ptr->heightSbx->blockSignals(false);
-
-    d_ptr->originalSize = size;
-    d_ptr->calBitrate();
-}
-
-auto VideoEncoderWidget::encodeParam() const -> Ffmpeg::EncodeContext
+auto VideoEncoderWidget::encodeContext() const -> Ffmpeg::EncodeContext
 {
     Ffmpeg::EncodeContext encodeParam;
     encodeParam.mediaType = AVMEDIA_TYPE_VIDEO;
-    encodeParam.encoderName = d_ptr->currentCodecName();
+    encodeParam.setEncoderName(d_ptr->currentCodecName());
     encodeParam.size = {d_ptr->widthSbx->value(), d_ptr->heightSbx->value()};
     encodeParam.gpuDecode = d_ptr->gpuDecodeCbx->isChecked();
     encodeParam.minBitrate = d_ptr->minBitrateSbx->value();
     encodeParam.maxBitrate = d_ptr->maxBitrateSbx->value();
-    encodeParam.bitrate = d_ptr->maxBitrateSbx->value();
+    encodeParam.bitrate = d_ptr->bitrateSbx->value();
     encodeParam.crf = d_ptr->crfSbx->value();
     encodeParam.preset = d_ptr->presetCbx->currentText();
     encodeParam.tune = d_ptr->tuneCbx->currentText();
     // encodeParam.profile = d_ptr->profileCbx->currentText();
 
     return encodeParam;
+}
+
+void VideoEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContext &decodeContext)
+{
+    Ffmpeg::CodecInfo codec{decodeContext.codecInfo().name};
+    auto index = d_ptr->videoEncoderCbx->findData(QVariant::fromValue(codec));
+    if (index >= 0) {
+        d_ptr->videoEncoderCbx->setCurrentIndex(index);
+    }
+
+    d_ptr->widthSbx->blockSignals(true);
+    d_ptr->heightSbx->blockSignals(true);
+    d_ptr->widthSbx->setValue(decodeContext.size.width());
+    d_ptr->heightSbx->setValue(decodeContext.size.height());
+    d_ptr->widthSbx->blockSignals(false);
+    d_ptr->heightSbx->blockSignals(false);
+
+    d_ptr->originalSize = decodeContext.size;
+
+    if (decodeContext.maxBitrate <= 0) {
+        d_ptr->calBitrate();
+    } else {
+        d_ptr->minBitrateSbx->setValue(decodeContext.minBitrate);
+        d_ptr->maxBitrateSbx->setValue(decodeContext.maxBitrate);
+        d_ptr->bitrateSbx->setValue(decodeContext.bitrate);
+    }
 }
 
 void VideoEncoderWidget::onEncoderChanged()
@@ -229,6 +234,7 @@ void VideoEncoderWidget::setupUI()
     auto *bitrateLayout = new QFormLayout(bitrateGroupBox);
     bitrateLayout->addRow(tr("Min Bitrate:"), d_ptr->minBitrateSbx);
     bitrateLayout->addRow(tr("Max Bitrate:"), d_ptr->maxBitrateSbx);
+    bitrateLayout->addRow(tr("Bitrate:"), d_ptr->bitrateSbx);
 
     auto *layout = new QGridLayout(this);
     layout->addLayout(codecLayout, 0, 0, 1, 2);

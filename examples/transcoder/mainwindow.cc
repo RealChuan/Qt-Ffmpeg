@@ -54,7 +54,10 @@ public:
         transcoder->setInFilePath(filePath);
         transcoder->startPreviewFrames(10);
         transcoder->parseInputFile();
+    }
 
+    void initUI()
+    {
         QSize size;
         double frameRate = 0;
         QString format;
@@ -187,8 +190,9 @@ void MainWindow::onStart()
 
         d_ptr->transcoder->setInFilePath(inPath);
         d_ptr->transcoder->setOutFilePath(outPath);
-        d_ptr->transcoder->setVideoEncodeContext(d_ptr->videoEncoderWidget->encodeParam());
-        d_ptr->transcoder->setAudioEncodeContext(d_ptr->audioEncoderWidget->encodeParam());
+        d_ptr->transcoder->setVideoEncodeContext(d_ptr->videoEncoderWidget->encodeContext());
+        d_ptr->transcoder->setAudioEncodeContext(
+            d_ptr->audioEncoderWidget->encodeContexts().first());
 
         if (QFile::exists(subtitlePath)) {
             d_ptr->transcoder->setSubtitleFilename(subtitlePath);
@@ -229,29 +233,22 @@ void MainWindow::onProcessEvents()
                                              / d_ptr->transcoder->duration());
         } break;
         case Ffmpeg::PropertyChangeEvent::EventType::MediaTrack: {
-            bool audioSet = false;
-            bool videoSet = false;
-            auto *mediaTrackEvent = dynamic_cast<Ffmpeg::MediaTrackEvent *>(eventPtr.data());
-            auto tracks = mediaTrackEvent->tracks();
-            for (const auto &track : std::as_const(tracks)) {
-                switch (track.mediaType) {
-                case AVMEDIA_TYPE_AUDIO:
-                    if (!audioSet) {
-                        if (d_ptr->audioEncoderWidget->setEncoder(track.codecId)) {
-                            audioSet = true;
-                        }
-                    }
-                    break;
-                case AVMEDIA_TYPE_VIDEO:
-                    if (!videoSet) {
-                        if (d_ptr->videoEncoderWidget->setEncoder(track.codecId)) {
-                            d_ptr->videoEncoderWidget->setVideoSize(track.size);
-                            videoSet = true;
-                        }
-                    }
-                    break;
+            d_ptr->initUI();
+
+            auto decodeContexts = d_ptr->transcoder->decodeContexts();
+            qDebug() << "decodeContexts:" << decodeContexts.size();
+            Ffmpeg::EncodeContexts audioDecodeContexts;
+            Ffmpeg::EncodeContexts videoDecodeContexts;
+            for (const auto &decodeContext : std::as_const(decodeContexts)) {
+                switch (decodeContext.mediaType) {
+                case AVMEDIA_TYPE_AUDIO: audioDecodeContexts.append(decodeContext); break;
+                case AVMEDIA_TYPE_VIDEO: videoDecodeContexts.append(decodeContext); break;
                 default: break;
                 }
+            }
+            d_ptr->audioEncoderWidget->setDecodeContext(audioDecodeContexts);
+            if (!videoDecodeContexts.isEmpty()) {
+                d_ptr->videoEncoderWidget->setDecodeContext(videoDecodeContexts.first());
             }
         } break;
         case Ffmpeg::PropertyChangeEvent::EventType::PreviewFramesChanged:

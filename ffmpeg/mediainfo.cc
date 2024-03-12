@@ -15,6 +15,7 @@ StreamInfo::StreamInfo(struct AVStream *stream)
     auto *codecpar = stream->codecpar;
     auto timebase = av_q2d(stream->time_base);
 
+    index = stream->index;
     mediaType = codecpar->codec_type;
     mediaTypeText = av_get_media_type_string(mediaType);
     startTime = QTime::fromMSecsSinceStartOfDay(stream->start_time * timebase * 1000)

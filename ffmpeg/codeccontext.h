@@ -68,7 +68,6 @@ public:
 
     void flush();
 
-    auto codec() -> const AVCodec *;
     auto avCodecCtx() -> AVCodecContext *;
 
 private:

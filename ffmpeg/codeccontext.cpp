@@ -77,12 +77,14 @@ public:
         Q_ASSERT(codecCtx->codec_type == AVMEDIA_TYPE_VIDEO);
         Q_ASSERT(crf >= EncodeLimit::crf_min && crf <= EncodeLimit::crf_max);
 
+        auto codecName = encodeContext.codecInfo().name;
+
         if (codecCtx->codec_id == AV_CODEC_ID_VP8 || codecCtx->codec_id == AV_CODEC_ID_VP9) {
             codecCtx->flags |= AV_CODEC_FLAG_QSCALE;
             codecCtx->global_quality = FF_QP2LAMBDA * crf + 0.5;
             auto quality = QString::number(crf, 'f', 2);
             av_dict_set(&encodeOptions, "crf", quality.toUtf8().data(), 0);
-        } else if (encodeContext.encoderName.contains("nvenc")) { // nvidia编码器
+        } else if (codecName.contains("nvenc")) { // nvidia编码器
             double adjustedQualityI = crf - 2;
             double adjustedQualityB = crf + 2;
             if (adjustedQualityB > EncodeLimit::crf_max) {
@@ -104,7 +106,7 @@ public:
             av_dict_set(&encodeOptions, "init_qpP", quality.toUtf8().data(), 0);
             av_dict_set(&encodeOptions, "init_qpB", qualityB.toUtf8().data(), 0);
             av_dict_set(&encodeOptions, "init_qpI", qualityI.toUtf8().data(), 0);
-        } else if (encodeContext.encoderName.contains("vce")) { // amd vce编码器
+        } else if (codecName.contains("vce")) { // amd vce编码器
             int maxQuality = EncodeLimit::crf_max;
             double qualityOffsetThreshold = 8;
             double qualityOffsetP = 2;
@@ -144,7 +146,7 @@ public:
             if (codecCtx->codec_id != AV_CODEC_ID_H265) {
                 av_dict_set(&encodeOptions, "qp_b", qualityB.toUtf8().data(), 0);
             }
-        } else if (encodeContext.encoderName.contains("mf")) { // ffmpeg mf编码器
+        } else if (codecName.contains("mf")) { // ffmpeg mf编码器
 
             auto quality = QString::number(crf, 'f', 2);
             av_dict_set(&encodeOptions, "rate_control", "quality", 0);
@@ -162,7 +164,7 @@ public:
 
         codecCtx->global_quality = encodeContext.crf * FF_QP2LAMBDA;
         codecCtx->flags |= AV_CODEC_FLAG_QSCALE;
-        if (encodeContext.encoderName.contains("fdk")) {
+        if (encodeContext.codecInfo().name.contains("fdk")) {
             auto vbr = QString::asprintf("%.1g", encodeContext.crf);
             av_dict_set(&encodeOptions, "vbr", vbr.toUtf8().data(), 0);
         }
@@ -351,7 +353,7 @@ auto CodecContext::supportedChLayouts() const -> QVector<AVChannelLayout>
 void CodecContext::setEncodeParameters(const EncodeContext &encodeContext)
 {
     setThreadCount(encodeContext.threadCount);
-    setProfile(encodeContext.profile);
+    setProfile(encodeContext.profile().profile);
 
     d_ptr->codecCtx->rc_min_rate = encodeContext.minBitrate;
     d_ptr->codecCtx->rc_max_rate = encodeContext.maxBitrate;
@@ -364,7 +366,8 @@ void CodecContext::setEncodeParameters(const EncodeContext &encodeContext)
         break;
     case AVMEDIA_TYPE_AUDIO: {
         AVChannelLayout chLayout = {AV_CHANNEL_ORDER_UNSPEC};
-        av_channel_layout_from_mask(&chLayout, static_cast<uint64_t>(encodeContext.channel));
+        av_channel_layout_from_mask(&chLayout,
+                                    static_cast<uint64_t>(encodeContext.chLayout().channel));
         setChLayout(chLayout);
         d_ptr->initAudioEncoderOptions(encodeContext);
     } break;
@@ -506,11 +509,6 @@ auto CodecContext::isDecoder() const -> bool
 void CodecContext::flush()
 {
     avcodec_flush_buffers(d_ptr->codecCtx);
-}
-
-auto CodecContext::codec() -> const AVCodec *
-{
-    return d_ptr->codecCtx->codec;
 }
 
 } // namespace Ffmpeg

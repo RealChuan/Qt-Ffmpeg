@@ -1,6 +1,7 @@
 #ifndef TRANSCODER_H
 #define TRANSCODER_H
 
+#include "encodecontext.hpp"
 #include "mediainfo.hpp"
 
 #include <ffmpeg/event/event.hpp>
@@ -13,7 +14,6 @@ extern "C" {
 
 namespace Ffmpeg {
 
-struct EncodeContext;
 class AVError;
 class Frame;
 class FFMPEG_EXPORT Transcoder : public QThread
@@ -24,7 +24,7 @@ public:
     ~Transcoder() override;
 
     void setInFilePath(const QString &filePath);
-    auto parseInputFile() -> bool;
+    void parseInputFile();
 
     [[nodiscard]] auto duration() const -> qint64; // microsecond
     auto mediaInfo() -> MediaInfo;
@@ -34,6 +34,8 @@ public:
 
     void setVideoEncodeContext(const EncodeContext &encodeContext);
     void setAudioEncodeContext(const EncodeContext &encodeContext);
+
+    [[nodiscard]] auto decodeContexts() const -> EncodeContexts;
 
     void setRange(const QPair<qint64, qint64> &range);
 

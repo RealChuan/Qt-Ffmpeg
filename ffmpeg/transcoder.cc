@@ -61,6 +61,7 @@ public:
         if (!ret) {
             return ret;
         }
+        decodeContexts.clear();
         inFormatContext->findStream();
         auto stream_num = inFormatContext->streams();
         for (int i = 0; i < stream_num; i++) {
@@ -92,6 +93,7 @@ public:
                 }
             }
             transContext->decContextInfoPtr = contextInfoPtr;
+            decodeContexts.append(EncodeContext{i, contextInfoPtr.data()});
         }
         inFormatContext->dumpFormat();
 
@@ -154,8 +156,8 @@ public:
                 contextInfoPtr->setIndex(i);
                 contextInfoPtr->setStream(stream);
                 contextInfoPtr->initEncoder(decContextInfo->mediaType() == AVMEDIA_TYPE_AUDIO
-                                                ? audioEncodeContext.encoderName
-                                                : videoEncodeContext.encoderName);
+                                                ? audioEncodeContext.codecInfo().name
+                                                : videoEncodeContext.codecInfo().name);
                 //contextInfoPtr->initEncoder(decContextInfo->codecCtx()->avCodecCtx()->codec_id);
                 auto *codecCtx = contextInfoPtr->codecCtx();
                 auto *avCodecCtx = codecCtx->avCodecCtx();
@@ -500,6 +502,8 @@ public:
 
     std::vector<FramePtr> previewFrames;
     QThreadPool *threadPool;
+
+    EncodeContexts decodeContexts;
 };
 
 Transcoder::Transcoder(QObject *parent)
@@ -520,10 +524,10 @@ void Transcoder::setInFilePath(const QString &filePath)
     d_ptr->inFilePath = filePath;
 }
 
-auto Transcoder::parseInputFile() -> bool
+void Transcoder::parseInputFile()
 {
     d_ptr->reset();
-    return d_ptr->openInputFile(true);
+    d_ptr->threadPool->start([this] { d_ptr->openInputFile(true); });
 }
 
 auto Transcoder::duration() const -> qint64
@@ -572,6 +576,11 @@ void Transcoder::setVideoEncodeContext(const EncodeContext &encodeContext)
 void Transcoder::setAudioEncodeContext(const EncodeContext &encodeContext)
 {
     d_ptr->audioEncodeContext = encodeContext;
+}
+
+auto Transcoder::decodeContexts() const -> EncodeContexts
+{
+    return d_ptr->decodeContexts;
 }
 
 void Transcoder::setRange(const QPair<qint64, qint64> &range)

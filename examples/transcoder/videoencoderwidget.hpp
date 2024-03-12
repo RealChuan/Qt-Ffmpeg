@@ -16,11 +16,8 @@ public:
     explicit VideoEncoderWidget(QWidget *parent = nullptr);
     ~VideoEncoderWidget() override;
 
-    auto setEncoder(AVCodecID codecId) -> bool;
-
-    void setVideoSize(const QSize &size);
-
-    [[nodiscard]] auto encodeParam() const -> Ffmpeg::EncodeContext;
+    void setDecodeContext(const Ffmpeg::EncodeContext &decodeContext);
+    [[nodiscard]] auto encodeContext() const -> Ffmpeg::EncodeContext;
 
 private slots:
     void onEncoderChanged();

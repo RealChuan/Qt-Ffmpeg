@@ -112,9 +112,7 @@ auto getCurrentHWDeviceTypes() -> QVector<AVHWDeviceType>
     if (types.isEmpty()) {
         auto type = AV_HWDEVICE_TYPE_NONE; // ffmpeg支持的硬件解码器
         QStringList list;
-        while ((type = av_hwdevice_iterate_types(type))
-               != AV_HWDEVICE_TYPE_NONE) // 遍历支持的设备类型。
-        {
+        while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE) {
             types.append(type);
             const auto *ctype = av_hwdevice_get_type_name(type); // 获取AVHWDeviceType的字符串名称。
             if (ctype != nullptr) {
@@ -173,8 +171,12 @@ auto getCodecsInfo(AVMediaType mediaType, bool encoder) -> CodecInfos
                 continue;
             }
             const auto *name = codec->name;
-            codecInfos.append(
-                {QString::fromUtf8(name), QString::fromUtf8(desc->long_name), codec->id});
+            CodecInfo codecInfo;
+            codecInfo.name = QString::fromUtf8(name);
+            codecInfo.longName = QString::fromUtf8(desc->long_name);
+            codecInfo.displayName = QString("%1 (%2)").arg(codecInfo.longName, codecInfo.name);
+            codecInfo.codecId = codec->id;
+            codecInfos.append(codecInfo);
             auto str = QString::asprintf("%-20s %s",
                                          name,
                                          codec->long_name != nullptr ? codec->long_name : "");
@@ -198,7 +200,7 @@ auto getMetaDatas(AVDictionary *metadata) -> Metadatas
     return metadatas;
 }
 
-ChLayouts getChLayouts(const QVector<AVChannelLayout> &channelLayout)
+auto getChLayouts(const QVector<AVChannelLayout> &channelLayout) -> ChLayouts
 {
     static ChLayouts s_chLayouts;
     if (s_chLayouts.isEmpty()) {

@@ -16,9 +16,8 @@ public:
     explicit AudioEncoderWidget(QWidget *parent = nullptr);
     ~AudioEncoderWidget() override;
 
-    auto setEncoder(AVCodecID codecId) -> bool;
-
-    [[nodiscard]] auto encodeParam() const -> Ffmpeg::EncodeContext;
+    void setDecodeContext(const Ffmpeg::EncodeContexts &decodeContexts);
+    [[nodiscard]] auto encodeContexts() const -> Ffmpeg::EncodeContexts;
 
 private slots:
     void onEncoderChanged();

@@ -11,8 +11,6 @@ extern "C" {
 #include <libavutil/hwcontext.h>
 }
 
-struct AVCodec;
-
 namespace Ffmpeg {
 
 class Packet;
@@ -37,11 +35,12 @@ auto getMetaDatas(AVDictionary *metadata) -> Metadatas;
 
 struct CodecInfo
 {
-    auto operator==(const CodecInfo &other) const -> bool { return codecId == other.codecId; }
+    auto operator==(const CodecInfo &other) const -> bool { return name == other.name; }
     auto operator!=(const CodecInfo &other) const -> bool { return !(*this == other); }
 
     QString name;
     QString longName;
+    QString displayName;
     enum AVCodecID codecId;
 };
 
@@ -49,11 +48,15 @@ using CodecInfos = QVector<CodecInfo>;
 
 auto FFMPEG_EXPORT getCodecsInfo(AVMediaType mediaType, bool encoder) -> CodecInfos;
 
-struct FFMPEG_EXPORT ChLayout
+struct ChLayout
 {
+    auto operator==(const ChLayout &other) const -> bool { return channel == other.channel; }
+    auto operator!=(const ChLayout &other) const -> bool { return !(*this == other); }
+
     AVChannel channel;
     QString channelName;
 };
+
 using ChLayouts = QVector<ChLayout>;
 
 auto FFMPEG_EXPORT getChLayouts(const QVector<AVChannelLayout> &channelLayout) -> ChLayouts;
