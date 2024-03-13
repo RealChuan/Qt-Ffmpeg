@@ -11,7 +11,7 @@ public:
     ~OutPutWidget() override;
 
     void setOutputFileName(const QString &fileName);
-    auto outputFilePath() const -> QString;
+    [[nodiscard]] auto outputFilePath() const -> QString;
 
 private slots:
     void onBrowse();

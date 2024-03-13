@@ -5,7 +5,7 @@
 
 #include <QtWidgets>
 
-QComboBox *createComboBox(QWidget *parent)
+auto createComboBox(QWidget *parent) -> QComboBox *
 {
     const auto *comboBoxStyleSheet = "QComboBox {combobox-popup:0;}";
     auto *comboBox = new QComboBox(parent);
@@ -104,4 +104,53 @@ void ProfileDelegate::setModelData(QWidget *editor,
 {
     auto *comboBox = qobject_cast<QComboBox *>(editor);
     model->setData(index, comboBox->currentData(), Qt::EditRole);
+}
+
+SampleRateDelegate::SampleRateDelegate(QObject *parent)
+    : QStyledItemDelegate(parent)
+{}
+
+auto SampleRateDelegate::createEditor(QWidget *parent,
+                                      const QStyleOptionViewItem &,
+                                      const QModelIndex &index) const -> QWidget *
+{
+    auto *comboBox = createComboBox(parent);
+    auto data = index.data(Qt::UserRole).value<Ffmpeg::EncodeContext>();
+    for (const auto &sampleRate : std::as_const(data.sampleRates)) {
+        comboBox->addItem(QString::number(sampleRate), sampleRate);
+    }
+    return comboBox;
+}
+
+void SampleRateDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
+{
+    auto *comboBox = qobject_cast<QComboBox *>(editor);
+    comboBox->setCurrentText(index.data(Qt::EditRole).toString());
+}
+
+void SampleRateDelegate::setModelData(QWidget *editor,
+                                      QAbstractItemModel *model,
+                                      const QModelIndex &index) const
+{
+    auto *comboBox = qobject_cast<QComboBox *>(editor);
+    model->setData(index, comboBox->currentData(), Qt::EditRole);
+}
+
+RemovedDelegate::RemovedDelegate(QObject *parent)
+    : QStyledItemDelegate(parent)
+{}
+
+bool RemovedDelegate::editorEvent(QEvent *event,
+                                  QAbstractItemModel *model,
+                                  const QStyleOptionViewItem &option,
+                                  const QModelIndex &index)
+{
+    if (event->type() == QEvent::MouseButtonRelease) {
+        auto e = static_cast<QMouseEvent *>(event);
+        if (e) {
+            emit removed(index);
+            qDebug() << "remove";
+        }
+    }
+    return QStyledItemDelegate::editorEvent(event, model, option, index);
 }

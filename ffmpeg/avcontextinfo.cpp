@@ -255,19 +255,4 @@ auto AVContextInfo::pixfmt() const -> AVPixelFormat
     return d_ptr->codecCtx->avCodecCtx()->pix_fmt;
 }
 
-auto AVContextInfo::quantizer() -> QPair<int, int>
-{
-    return d_ptr->codecCtx->quantizer();
-}
-
-auto AVContextInfo::profiles() -> QVector<AVProfile>
-{
-    return d_ptr->codecCtx->supportedProfiles();
-}
-
-auto AVContextInfo::chLayouts() const -> QVector<AVChannelLayout>
-{
-    return d_ptr->codecCtx->supportedChLayouts();
-}
-
 } // namespace Ffmpeg

@@ -18,6 +18,12 @@ set(PROJECT_SOURCES
     stautuswidget.hpp
     styleditemdelegate.cc
     styleditemdelegate.hpp
+    subtitleencodermodel.cc
+    subtitleencodermodel.hpp
+    subtitleencodertableview.cc
+    subtitleencodertableview.hpp
+    subtitleencoderwidget.cc
+    subtitleencoderwidget.hpp
     videoencoderwidget.cc
     videoencoderwidget.hpp)
 

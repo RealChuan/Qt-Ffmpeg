@@ -64,7 +64,6 @@ public:
         const auto *profile = codec->profiles;
         while (profile != nullptr && profile->profile != AV_PROFILE_UNKNOWN) {
             supported_profiles.append(*profile);
-            qDebug() << profile->name << profile->profile;
             profile++;
         }
     }
@@ -265,7 +264,7 @@ auto CodecContext::setParameters(const AVCodecParameters *par) -> bool
     ERROR_RETURN(ret)
 }
 
-auto CodecContext::supportFrameRates() const -> QVector<AVRational>
+auto CodecContext::supportedFrameRates() const -> QVector<AVRational>
 {
     return d_ptr->supported_framerates;
 }
@@ -301,7 +300,7 @@ void CodecContext::setPixfmt(AVPixelFormat pixfmt)
     d_ptr->codecCtx->pix_fmt = d_ptr->supported_pix_fmts.first();
 }
 
-auto CodecContext::supportSampleRates() const -> QVector<int>
+auto CodecContext::supportedSampleRates() const -> QVector<int>
 {
     return d_ptr->supported_samplerates;
 }
@@ -369,6 +368,7 @@ void CodecContext::setEncodeParameters(const EncodeContext &encodeContext)
         av_channel_layout_from_mask(&chLayout,
                                     static_cast<uint64_t>(encodeContext.chLayout().channel));
         setChLayout(chLayout);
+        setSampleRate(encodeContext.sampleRate);
         d_ptr->initAudioEncoderOptions(encodeContext);
     } break;
     default: break;
@@ -423,12 +423,12 @@ auto CodecContext::quantizer() const -> QPair<int, int>
     return {d_ptr->codecCtx->qmin, d_ptr->codecCtx->qmax};
 }
 
-auto CodecContext::supportPixFmts() const -> QVector<AVPixelFormat>
+auto CodecContext::supportedPixFmts() const -> QVector<AVPixelFormat>
 {
     return d_ptr->supported_pix_fmts;
 }
 
-auto CodecContext::supportSampleFmts() const -> QVector<AVSampleFormat>
+auto CodecContext::supportedSampleFmts() const -> QVector<AVSampleFormat>
 {
     return d_ptr->supported_sample_fmts;
 }

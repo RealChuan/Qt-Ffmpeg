@@ -23,18 +23,51 @@ AudioEncoderTableView::AudioEncoderTableView(QWidget *parent)
     , d_ptr(new AudioEncoderTableViewPrivate(this))
 {
     setupUI();
+    buildConnect();
 }
 
-AudioEncoderTableView::~AudioEncoderTableView() {}
+AudioEncoderTableView::~AudioEncoderTableView() = default;
 
 void AudioEncoderTableView::setDatas(const Ffmpeg::EncodeContexts &encodeContexts)
 {
     d_ptr->model->setDatas(encodeContexts);
 }
 
-Ffmpeg::EncodeContexts AudioEncoderTableView::datas() const
+auto AudioEncoderTableView::datas() const -> Ffmpeg::EncodeContexts
 {
     return d_ptr->model->datas();
+}
+
+void AudioEncoderTableView::onRemoved(const QModelIndex &index)
+{
+    d_ptr->model->remove(index);
+}
+
+void AudioEncoderTableView::onResize()
+{
+    setColumnWidth(AudioEncoderModel::Property::ID, 50);
+    setColumnWidth(AudioEncoderModel::Property::SourceInfo, this->width() / 5 - 10);
+    setColumnWidth(AudioEncoderModel::Property::ChannelLayout, 100);
+    setColumnWidth(AudioEncoderModel::Property::Bitrate, 100);
+    setColumnWidth(AudioEncoderModel::Property::SampleRate, 100);
+    setColumnWidth(AudioEncoderModel::Property::Crf, 50);
+    setColumnWidth(AudioEncoderModel::Property::Profile, 100);
+    setColumnWidth(AudioEncoderModel::Property::Remove, 50);
+
+    auto width = this->width() - columnWidth(AudioEncoderModel::Property::ID)
+                 - columnWidth(AudioEncoderModel::Property::SourceInfo)
+                 - columnWidth(AudioEncoderModel::Property::ChannelLayout)
+                 - columnWidth(AudioEncoderModel::Property::Bitrate)
+                 - columnWidth(AudioEncoderModel::Property::SampleRate)
+                 - columnWidth(AudioEncoderModel::Property::Crf)
+                 - columnWidth(AudioEncoderModel::Property::Profile) - 50 - 10;
+    setColumnWidth(AudioEncoderModel::Property::Encoder, width);
+}
+
+void AudioEncoderTableView::resizeEvent(QResizeEvent *event)
+{
+    QTableView::resizeEvent(event);
+    QMetaObject::invokeMethod(this, &AudioEncoderTableView::onResize, Qt::QueuedConnection);
 }
 
 void AudioEncoderTableView::setupUI()
@@ -50,18 +83,24 @@ void AudioEncoderTableView::setupUI()
     horizontalHeader()->setDefaultSectionSize(120);
     horizontalHeader()->setMinimumSectionSize(60);
     horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    horizontalHeader()->setSectionResizeMode(AudioEncoderModel::Property::Encoder,
-                                             QHeaderView::Stretch);
     setIconSize(QSize(20, 20));
 
     setItemDelegateForColumn(AudioEncoderModel::Property::Encoder, new AudioEncoderDelegate(this));
     setItemDelegateForColumn(AudioEncoderModel::Property::ChannelLayout,
                              new ChannelLayoutDelegate(this));
+    setItemDelegateForColumn(AudioEncoderModel::Property::SampleRate, new SampleRateDelegate(this));
     setItemDelegateForColumn(AudioEncoderModel::Property::Profile, new ProfileDelegate(this));
+    auto *removedDelegate = new RemovedDelegate(this);
+    connect(removedDelegate, &RemovedDelegate::removed, this, &AudioEncoderTableView::onRemoved);
+    setItemDelegateForColumn(AudioEncoderModel::Property::Remove, removedDelegate);
+}
 
-    setColumnWidth(AudioEncoderModel::Property::ID, 50);
-    setColumnWidth(AudioEncoderModel::Property::ChannelLayout, 100);
-    setColumnWidth(AudioEncoderModel::Property::Bitrate, 100);
-    setColumnWidth(AudioEncoderModel::Property::Crf, 50);
-    setColumnWidth(AudioEncoderModel::Property::Profile, 100);
+void AudioEncoderTableView::buildConnect()
+{
+    connect(
+        d_ptr->model,
+        &AudioEncoderModel::dataChanged,
+        this,
+        [this] { update(); },
+        Qt::QueuedConnection);
 }

@@ -25,6 +25,9 @@ SOURCES += \
     sourcewidget.cc \
     stautuswidget.cc \
     styleditemdelegate.cc \
+    subtitleencodermodel.cc \
+    subtitleencodertableview.cc \
+    subtitleencoderwidget.cc \
     videoencoderwidget.cc
 
 HEADERS += \
@@ -37,6 +40,9 @@ HEADERS += \
     sourcewidget.hpp \
     stautuswidget.hpp \
     styleditemdelegate.hpp \
+    subtitleencodermodel.hpp \
+    subtitleencodertableview.hpp \
+    subtitleencoderwidget.hpp \
     videoencoderwidget.hpp
 
 DESTDIR = $$APP_OUTPUT_PATH

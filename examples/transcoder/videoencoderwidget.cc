@@ -1,6 +1,7 @@
 #include "videoencoderwidget.hpp"
 
 #include <ffmpeg/avcontextinfo.h>
+#include <ffmpeg/codeccontext.h>
 #include <ffmpeg/ffmpegutils.hpp>
 
 #include <QtWidgets>
@@ -176,7 +177,7 @@ void VideoEncoderWidget::onEncoderChanged()
     if (!contextInfoPtr->initEncoder(d_ptr->currentCodecName())) {
         return;
     }
-    auto profiles = contextInfoPtr->profiles();
+    auto profiles = contextInfoPtr->codecCtx()->supportedProfiles();
     for (const auto &profile : std::as_const(profiles)) {
         d_ptr->profileCbx->addItem(profile.name, profile.profile);
     }

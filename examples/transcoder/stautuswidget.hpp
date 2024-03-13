@@ -11,7 +11,7 @@ public:
     ~StautusWidget() override;
 
     void setStatus(const QString &status);
-    auto status() const -> QString;
+    [[nodiscard]] auto status() const -> QString;
 
     void setProgress(int progress);
 

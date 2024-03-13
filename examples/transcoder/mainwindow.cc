@@ -4,6 +4,7 @@
 #include "previewwidget.hpp"
 #include "sourcewidget.hpp"
 #include "stautuswidget.hpp"
+#include "subtitleencoderwidget.hpp"
 #include "videoencoderwidget.hpp"
 
 #include <ffmpeg/averror.h>
@@ -34,12 +35,15 @@ public:
         previewWidget = new PreviewWidget(q_ptr);
         videoEncoderWidget = new VideoEncoderWidget(q_ptr);
         audioEncoderWidget = new AudioEncoderWidget(q_ptr);
+        subtitleEncoderWidget = new SubtitleEncoderWidget(q_ptr);
         tabWidget->addTab(previewWidget,
                           QCoreApplication::translate("MainWindowPrivate", "Preview"));
         tabWidget->addTab(videoEncoderWidget,
                           QCoreApplication::translate("MainWindowPrivate", "Video"));
         tabWidget->addTab(audioEncoderWidget,
                           QCoreApplication::translate("MainWindowPrivate", "Audio"));
+        tabWidget->addTab(subtitleEncoderWidget,
+                          QCoreApplication::translate("MainWindowPrivate", "Subtitle"));
 
         outPutWidget = new OutPutWidget(q_ptr);
         statusWidget = new StautusWidget(q_ptr);
@@ -81,10 +85,11 @@ public:
             }
         }
 
+        auto fileName = QFileInfo(mediaInfo.url).fileName();
         auto info = QCoreApplication::translate(
                         "MainWindowPrivate",
-                        "%1, Duration: %2, %3, %4x%5, %6FPS, %7 video, %8 audio, %9 subtitle")
-                        .arg(QFileInfo(mediaInfo.url).fileName(),
+                        "%1\nDuration: %2, %3, %4x%5, %6FPS, %7 video, %8 audio, %9 subtitle")
+                        .arg(fileName,
                              mediaInfo.durationText,
                              format,
                              QString::number(size.width()),
@@ -95,6 +100,8 @@ public:
                              QString::number(subtitleCount));
         sourceWidget->setFileInfo(info);
         sourceWidget->setDuration(mediaInfo.duration / 1000);
+
+        q_ptr->setWindowTitle(fileName);
     }
 
     MainWindow *q_ptr;
@@ -106,6 +113,7 @@ public:
     PreviewWidget *previewWidget;
     VideoEncoderWidget *videoEncoderWidget;
     AudioEncoderWidget *audioEncoderWidget;
+    SubtitleEncoderWidget *subtitleEncoderWidget;
     OutPutWidget *outPutWidget;
     StautusWidget *statusWidget;
 
@@ -236,17 +244,19 @@ void MainWindow::onProcessEvents()
             d_ptr->initUI();
 
             auto decodeContexts = d_ptr->transcoder->decodeContexts();
-            qDebug() << "decodeContexts:" << decodeContexts.size();
             Ffmpeg::EncodeContexts audioDecodeContexts;
             Ffmpeg::EncodeContexts videoDecodeContexts;
+            Ffmpeg::EncodeContexts subtitleDecodeContexts;
             for (const auto &decodeContext : std::as_const(decodeContexts)) {
                 switch (decodeContext.mediaType) {
                 case AVMEDIA_TYPE_AUDIO: audioDecodeContexts.append(decodeContext); break;
                 case AVMEDIA_TYPE_VIDEO: videoDecodeContexts.append(decodeContext); break;
+                case AVMEDIA_TYPE_SUBTITLE: subtitleDecodeContexts.append(decodeContext); break;
                 default: break;
                 }
             }
             d_ptr->audioEncoderWidget->setDecodeContext(audioDecodeContexts);
+            d_ptr->subtitleEncoderWidget->setDecodeContext(subtitleDecodeContexts);
             if (!videoDecodeContexts.isEmpty()) {
                 d_ptr->videoEncoderWidget->setDecodeContext(videoDecodeContexts.first());
             }

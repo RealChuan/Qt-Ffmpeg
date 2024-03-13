@@ -93,7 +93,7 @@ public:
                 }
             }
             transContext->decContextInfoPtr = contextInfoPtr;
-            decodeContexts.append(EncodeContext{i, contextInfoPtr.data()});
+            decodeContexts.append(EncodeContext{stream, contextInfoPtr.data()});
         }
         inFormatContext->dumpFormat();
 

@@ -10,6 +10,8 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 }
 
+struct AVStream;
+
 namespace Ffmpeg {
 
 namespace EncodeLimit {
@@ -40,9 +42,10 @@ static const QStringList tunes = QStringList{"film",
 struct FFMPEG_EXPORT EncodeContext
 {
     EncodeContext() = default;
-    explicit EncodeContext(int streamIndex, AVContextInfo *info);
+    explicit EncodeContext(AVStream *stream, AVContextInfo *info);
 
-    void setEncoderName(const QString &name);
+    auto setEncoderName(AVCodecID codecId) -> bool;
+    auto setEncoderName(const QString &name) -> bool;
     [[nodiscard]] auto codecInfo() const -> CodecInfo { return m_codecInfo; }
 
     void setChannel(AVChannel channel);
@@ -50,6 +53,8 @@ struct FFMPEG_EXPORT EncodeContext
 
     void setProfile(int profile);
     [[nodiscard]] auto profile() const -> AVProfile { return m_profile; }
+
+    QString sourceInfo;
 
     int streamIndex = -1;
     AVMediaType mediaType;
@@ -59,20 +64,28 @@ struct FFMPEG_EXPORT EncodeContext
     qint64 bitrate = -1;
 
     int threadCount = -1;
-
-    bool gpuDecode = true;
-
     int crf = 18;
 
+    // video
+    bool gpuDecode = true;
+    QSize size = {-1, -1};
     QString preset = "slow";
     QString tune = "film";
 
-    QSize size = {-1, -1};
+    // audio
+    int sampleRate = -1;
 
-    ChLayouts chLayouts;
+    // subtitle
+    bool burn = false;
+    bool external = false;
+
     QVector<AVProfile> profiles;
+    ChLayouts chLayouts;
+    QVector<int> sampleRates;
 
 private:
+    void init(AVContextInfo *info);
+
     CodecInfo m_codecInfo;
     ChLayout m_chLayout;
     AVProfile m_profile;

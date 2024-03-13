@@ -1,5 +1,9 @@
 #include "audioencodermodel.hpp"
 
+#include <QApplication>
+#include <QIcon>
+#include <QStyle>
+
 class AudioEncoderModel::AudioEncoderModelPrivate
 {
 public:
@@ -16,6 +20,8 @@ public:
 
     Ffmpeg::EncodeContexts encodeContexts;
     QStringList headers;
+
+    QIcon removeIcon = qApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton);
 };
 
 AudioEncoderModel::AudioEncoderModel(QObject *parent)
@@ -54,10 +60,12 @@ auto AudioEncoderModel::data(const QModelIndex &index, int role) const -> QVaria
     case Qt::DisplayRole:
     case Qt::EditRole: { //双击为空需添加
         switch (col) {
-        case Property::ID: return row;
+        case Property::ID: return data.streamIndex;
+        case Property::SourceInfo: return data.sourceInfo;
         case Property::Encoder: return data.codecInfo().displayName;
         case Property::ChannelLayout: return data.chLayout().channelName;
         case Property::Bitrate: return data.bitrate;
+        case Property::SampleRate: return data.sampleRate;
         case Property::Crf: return data.crf;
         case Property::Profile: {
             auto profile = data.profile();
@@ -66,6 +74,12 @@ auto AudioEncoderModel::data(const QModelIndex &index, int role) const -> QVaria
             }
             return {};
         }
+        default: break;
+        }
+        break;
+    case Qt::DecorationRole:
+        switch (col) {
+        case Property::Remove: return d_ptr->removeIcon;
         default: break;
         }
         break;
@@ -105,8 +119,16 @@ auto AudioEncoderModel::setData(const QModelIndex &index, const QVariant &value,
         } break;
         case Property::Bitrate:
             data.maxBitrate = data.minBitrate = data.bitrate = value.toInt();
+            emit dataChanged(index, index);
             break;
-        case Property::Crf: data.crf = value.toInt();
+        case Property::SampleRate:
+            data.sampleRate = value.toInt();
+            emit dataChanged(index, index);
+            break;
+        case Property::Crf:
+            data.crf = value.toInt();
+            emit dataChanged(index, index);
+            break;
         case Property::Profile: {
             auto profile = value.toInt();
             if (data.profile().profile != profile) {
@@ -129,8 +151,11 @@ auto AudioEncoderModel::flags(const QModelIndex &index) const -> Qt::ItemFlags
         return {};
     }
     auto flags = QAbstractTableModel::flags(index);
-    if (index.column() != Property::ID) {
-        flags |= Qt::ItemIsEditable;
+    switch (index.column()) {
+    case Property::ID:
+    case Property::SourceInfo:
+    case Property::Remove: break;
+    default: flags |= Qt::ItemIsEditable; break;
     }
     return flags;
 }
@@ -158,7 +183,14 @@ void AudioEncoderModel::setDatas(const Ffmpeg::EncodeContexts &encodeContexts)
     endResetModel();
 }
 
-Ffmpeg::EncodeContexts AudioEncoderModel::datas() const
+auto AudioEncoderModel::datas() const -> Ffmpeg::EncodeContexts
 {
     return d_ptr->encodeContexts;
+}
+
+void AudioEncoderModel::remove(const QModelIndex &index)
+{
+    beginRemoveRows(index.parent(), index.row(), index.row());
+    d_ptr->encodeContexts.removeAt(index.row());
+    endRemoveRows();
 }

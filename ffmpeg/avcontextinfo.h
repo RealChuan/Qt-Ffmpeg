@@ -58,10 +58,6 @@ public:
     [[nodiscard]] auto gpuType() const -> GpuType;
     [[nodiscard]] auto pixfmt() const -> AVPixelFormat;
 
-    [[nodiscard]] auto quantizer() -> QPair<int, int>;
-    [[nodiscard]] auto profiles() -> QVector<AVProfile>;
-    [[nodiscard]] auto chLayouts() const -> QVector<AVChannelLayout>;
-
     auto codecCtx() -> CodecContext *;
 
 private:

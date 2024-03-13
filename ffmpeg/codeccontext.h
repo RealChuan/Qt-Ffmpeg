@@ -1,6 +1,8 @@
 #ifndef CODECCONTEXT_H
 #define CODECCONTEXT_H
 
+#include "ffmepg_global.h"
+
 #include <QObject>
 
 extern "C" {
@@ -16,7 +18,7 @@ struct EncodeContext;
 class Subtitle;
 class Packet;
 class Frame;
-class CodecContext : public QObject
+class FFMPEG_EXPORT CodecContext : public QObject
 {
 public:
     explicit CodecContext(const AVCodec *codec, QObject *parent = nullptr);
@@ -26,16 +28,16 @@ public:
 
     auto setParameters(const AVCodecParameters *par) -> bool;
 
-    [[nodiscard]] auto supportFrameRates() const -> QVector<AVRational>;
+    [[nodiscard]] auto supportedFrameRates() const -> QVector<AVRational>;
     void setFrameRate(const AVRational &frameRate);
 
-    [[nodiscard]] auto supportPixFmts() const -> QVector<AVPixelFormat>;
+    [[nodiscard]] auto supportedPixFmts() const -> QVector<AVPixelFormat>;
     void setPixfmt(AVPixelFormat pixfmt);
 
-    [[nodiscard]] auto supportSampleRates() const -> QVector<int>;
+    [[nodiscard]] auto supportedSampleRates() const -> QVector<int>;
     void setSampleRate(int sampleRate);
 
-    [[nodiscard]] auto supportSampleFmts() const -> QVector<AVSampleFormat>;
+    [[nodiscard]] auto supportedSampleFmts() const -> QVector<AVSampleFormat>;
     void setSampleFmt(AVSampleFormat sampleFmt);
 
     [[nodiscard]] auto supportedProfiles() const -> QVector<AVProfile>;

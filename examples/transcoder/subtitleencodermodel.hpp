@@ -1,29 +1,19 @@
-#ifndef AUDIOENCODERMODEL_HPP
-#define AUDIOENCODERMODEL_HPP
+#ifndef SUBTITLEENCODERMODEL_HPP
+#define SUBTITLEENCODERMODEL_HPP
 
 #include <ffmpeg/encodecontext.hpp>
 
 #include <QAbstractTableModel>
 
-class AudioEncoderModel : public QAbstractTableModel
+class SubtitleEncoderModel : public QAbstractTableModel
 {
     Q_OBJECT
 public:
-    enum Property {
-        ID,
-        SourceInfo,
-        Encoder,
-        ChannelLayout,
-        Bitrate,
-        SampleRate,
-        Crf,
-        Profile,
-        Remove
-    };
+    enum Property { ID, SourceInfo, Burn, Remove };
     Q_ENUM(Property);
 
-    explicit AudioEncoderModel(QObject *parent = nullptr);
-    ~AudioEncoderModel() override;
+    explicit SubtitleEncoderModel(QObject *parent = nullptr);
+    ~SubtitleEncoderModel() override;
 
     [[nodiscard]] auto rowCount(const QModelIndex &parent = QModelIndex()) const -> int override;
     [[nodiscard]] auto columnCount(const QModelIndex &parent = QModelIndex()) const -> int override;
@@ -40,13 +30,16 @@ public:
                                   int role = Qt::DisplayRole) const -> QVariant override;
 
     void setDatas(const Ffmpeg::EncodeContexts &encodeContexts);
+    void append(const Ffmpeg::EncodeContexts &encodeContexts);
     [[nodiscard]] auto datas() const -> Ffmpeg::EncodeContexts;
 
     void remove(const QModelIndex &index);
 
+    void setExclusive(int row);
+
 private:
-    class AudioEncoderModelPrivate;
-    QScopedPointer<AudioEncoderModelPrivate> d_ptr;
+    class SubtitleEncoderModelPrivate;
+    QScopedPointer<SubtitleEncoderModelPrivate> d_ptr;
 };
 
-#endif // AUDIOENCODERMODEL_HPP
+#endif // SUBTITLEENCODERMODEL_HPP
