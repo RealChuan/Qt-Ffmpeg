@@ -5,6 +5,8 @@ set(PROJECT_SOURCES
     audioencodertableview.hpp
     audioencoderwidget.cc
     audioencoderwidget.hpp
+    commonwidgets.cc
+    commonwidgets.hpp
     main.cc
     mainwindow.cc
     mainwindow.hpp

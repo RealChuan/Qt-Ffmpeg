@@ -83,7 +83,7 @@ public:
             codecCtx->global_quality = FF_QP2LAMBDA * crf + 0.5;
             auto quality = QString::number(crf, 'f', 2);
             av_dict_set(&encodeOptions, "crf", quality.toUtf8().data(), 0);
-        } else if (codecName.contains("nvenc")) { // nvidia编码器
+        } else if (codecName.contains("_nvenc")) { // nvidia编码器
             double adjustedQualityI = crf - 2;
             double adjustedQualityB = crf + 2;
             if (adjustedQualityB > EncodeLimit::crf_max) {
@@ -105,7 +105,7 @@ public:
             av_dict_set(&encodeOptions, "init_qpP", quality.toUtf8().data(), 0);
             av_dict_set(&encodeOptions, "init_qpB", qualityB.toUtf8().data(), 0);
             av_dict_set(&encodeOptions, "init_qpI", qualityI.toUtf8().data(), 0);
-        } else if (codecName.contains("vce")) { // amd vce编码器
+        } else if (codecName.contains("_vce")) { // amd vce编码器
             int maxQuality = EncodeLimit::crf_max;
             double qualityOffsetThreshold = 8;
             double qualityOffsetP = 2;
@@ -145,12 +145,11 @@ public:
             if (codecCtx->codec_id != AV_CODEC_ID_H265) {
                 av_dict_set(&encodeOptions, "qp_b", qualityB.toUtf8().data(), 0);
             }
-        } else if (codecName.contains("mf")) { // ffmpeg mf编码器
-
+        } else if (codecName.contains("_mf")) { // ffmpeg mf编码器
             auto quality = QString::number(crf, 'f', 2);
             av_dict_set(&encodeOptions, "rate_control", "quality", 0);
             av_dict_set(&encodeOptions, "quality", quality.toUtf8().data(), 0);
-            av_dict_set(&encodeOptions, "hw_encoding", "1", 0);
+            // av_dict_set(&encodeOptions, "hw_encoding", "1", 0);
         } else {
             codecCtx->flags |= AV_CODEC_FLAG_QSCALE;
             codecCtx->global_quality = FF_QP2LAMBDA * crf + 0.5;

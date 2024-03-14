@@ -233,4 +233,11 @@ auto getChLayouts(const QVector<AVChannelLayout> &channelLayout) -> ChLayouts
     return chLayouts.isEmpty() ? s_chLayouts : chLayouts;
 }
 
+QByteArray convertUrlToFfmpegInput(const QString &url)
+{
+    QByteArray inpuUrl = QUrl::fromUserInput(url).isLocalFile() ? url.toUtf8()
+                                                                : QUrl(url).toEncoded();
+    return inpuUrl;
+}
+
 } // namespace Ffmpeg

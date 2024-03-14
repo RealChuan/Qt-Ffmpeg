@@ -61,6 +61,8 @@ using ChLayouts = QVector<ChLayout>;
 
 auto FFMPEG_EXPORT getChLayouts(const QVector<AVChannelLayout> &channelLayout) -> ChLayouts;
 
+auto convertUrlToFfmpegInput(const QString &url) -> QByteArray;
+
 } // namespace Ffmpeg
 
 Q_DECLARE_METATYPE(Ffmpeg::CodecInfo);

@@ -26,20 +26,21 @@ public:
     void setInFilePath(const QString &filePath);
     void parseInputFile();
 
+    void setOutFilePath(const QString &filepath);
+
+    void setGpuDecode(bool enable);
+    auto isGpuDecode() -> bool;
+
+    void setEncodeContexts(const EncodeContexts &encodeContexts);
+    [[nodiscard]] auto decodeContexts() const -> EncodeContexts;
+
     [[nodiscard]] auto duration() const -> qint64; // microsecond
     auto mediaInfo() -> MediaInfo;
     void startPreviewFrames(int count);
     void setPreviewFrames(const std::vector<QSharedPointer<Frame>> &framePtrs);
     [[nodiscard]] auto previewFrames() const -> std::vector<QSharedPointer<Frame>>;
 
-    void setVideoEncodeContext(const EncodeContext &encodeContext);
-    void setAudioEncodeContext(const EncodeContext &encodeContext);
-
-    [[nodiscard]] auto decodeContexts() const -> EncodeContexts;
-
     void setRange(const QPair<qint64, qint64> &range);
-
-    void setOutFilePath(const QString &filepath);
 
     void setSubtitleFilename(const QString &filename);
 

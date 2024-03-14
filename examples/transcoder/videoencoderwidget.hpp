@@ -19,6 +19,8 @@ public:
     void setDecodeContext(const Ffmpeg::EncodeContext &decodeContext);
     [[nodiscard]] auto encodeContext() const -> Ffmpeg::EncodeContext;
 
+    bool isGpuDecode() const;
+
 private slots:
     void onEncoderChanged();
     void onVideoWidthChanged();

@@ -21,6 +21,9 @@ struct TranscoderContext
 
     QSharedPointer<AudioFifo> audioFifoPtr;
     qint64 audioPts = 0;
+
+    bool vaild = false;
+    int outStreamIndex = -1;
 };
 
 } // namespace Ffmpeg

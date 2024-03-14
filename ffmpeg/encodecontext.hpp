@@ -57,7 +57,7 @@ struct FFMPEG_EXPORT EncodeContext
     QString sourceInfo;
 
     int streamIndex = -1;
-    AVMediaType mediaType;
+    AVMediaType mediaType = AVMEDIA_TYPE_UNKNOWN;
 
     qint64 minBitrate = -1;
     qint64 maxBitrate = -1;
@@ -67,7 +67,6 @@ struct FFMPEG_EXPORT EncodeContext
     int crf = 18;
 
     // video
-    bool gpuDecode = true;
     QSize size = {-1, -1};
     QString preset = "slow";
     QString tune = "film";

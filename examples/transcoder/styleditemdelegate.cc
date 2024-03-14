@@ -1,19 +1,10 @@
 #include "styleditemdelegate.hpp"
+#include "commonwidgets.hpp"
 
 #include <ffmpeg/encodecontext.hpp>
 #include <ffmpeg/ffmpegutils.hpp>
 
 #include <QtWidgets>
-
-auto createComboBox(QWidget *parent) -> QComboBox *
-{
-    const auto *comboBoxStyleSheet = "QComboBox {combobox-popup:0;}";
-    auto *comboBox = new QComboBox(parent);
-    comboBox->setView(new QListView(comboBox));
-    comboBox->setMaxVisibleItems(10);
-    comboBox->setStyleSheet(comboBoxStyleSheet);
-    return comboBox;
-}
 
 AudioEncoderDelegate::AudioEncoderDelegate(QObject *parent)
     : QStyledItemDelegate(parent)
@@ -25,7 +16,7 @@ auto AudioEncoderDelegate::createEditor(QWidget *parent,
 {
     static auto audioEncodercs = Ffmpeg::getCodecsInfo(AVMEDIA_TYPE_AUDIO, true);
 
-    auto *comboBox = createComboBox(parent);
+    auto *comboBox = CommonWidgets::createComboBox(parent);
     for (const auto &codec : std::as_const(audioEncodercs)) {
         comboBox->addItem(codec.displayName, QVariant::fromValue(codec));
     }
@@ -54,7 +45,7 @@ auto ChannelLayoutDelegate::createEditor(QWidget *parent,
                                          const QStyleOptionViewItem &,
                                          const QModelIndex &index) const -> QWidget *
 {
-    auto *comboBox = createComboBox(parent);
+    auto *comboBox = CommonWidgets::createComboBox(parent);
     auto data = index.data(Qt::UserRole).value<Ffmpeg::EncodeContext>();
     for (const auto &chLayout : std::as_const(data.chLayouts)) {
         comboBox->addItem(chLayout.channelName, chLayout.channel);
@@ -84,7 +75,7 @@ auto ProfileDelegate::createEditor(QWidget *parent,
                                    const QStyleOptionViewItem &,
                                    const QModelIndex &index) const -> QWidget *
 {
-    auto *comboBox = createComboBox(parent);
+    auto *comboBox = CommonWidgets::createComboBox(parent);
     auto data = index.data(Qt::UserRole).value<Ffmpeg::EncodeContext>();
     for (const auto &profile : std::as_const(data.profiles)) {
         comboBox->addItem(profile.name, profile.profile);
@@ -114,7 +105,7 @@ auto SampleRateDelegate::createEditor(QWidget *parent,
                                       const QStyleOptionViewItem &,
                                       const QModelIndex &index) const -> QWidget *
 {
-    auto *comboBox = createComboBox(parent);
+    auto *comboBox = CommonWidgets::createComboBox(parent);
     auto data = index.data(Qt::UserRole).value<Ffmpeg::EncodeContext>();
     for (const auto &sampleRate : std::as_const(data.sampleRates)) {
         comboBox->addItem(QString::number(sampleRate), sampleRate);
@@ -140,14 +131,14 @@ RemovedDelegate::RemovedDelegate(QObject *parent)
     : QStyledItemDelegate(parent)
 {}
 
-bool RemovedDelegate::editorEvent(QEvent *event,
+auto RemovedDelegate::editorEvent(QEvent *event,
                                   QAbstractItemModel *model,
                                   const QStyleOptionViewItem &option,
-                                  const QModelIndex &index)
+                                  const QModelIndex &index) -> bool
 {
     if (event->type() == QEvent::MouseButtonRelease) {
-        auto e = static_cast<QMouseEvent *>(event);
-        if (e) {
+        auto *e = static_cast<QMouseEvent *>(event);
+        if (e != nullptr) {
             emit removed(index);
             qDebug() << "remove";
         }

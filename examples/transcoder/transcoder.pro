@@ -18,6 +18,7 @@ SOURCES += \
     audioencodermodel.cc \
     audioencodertableview.cc \
     audioencoderwidget.cc \
+    commonwidgets.cc \
     main.cc \
     mainwindow.cc \
     outputwidget.cc \
@@ -34,6 +35,7 @@ HEADERS += \
     audioencodermodel.hpp \
     audioencodertableview.hpp \
     audioencoderwidget.hpp \
+    commonwidgets.hpp \
     mainwindow.hpp \
     outputwidget.hpp \
     previewwidget.hpp \

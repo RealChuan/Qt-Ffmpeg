@@ -1,4 +1,5 @@
 #include "videoencoderwidget.hpp"
+#include "commonwidgets.hpp"
 
 #include <ffmpeg/avcontextinfo.h>
 #include <ffmpeg/codeccontext.h>
@@ -12,11 +13,7 @@ public:
     explicit VideoEncoderWidgetPrivate(VideoEncoderWidget *q)
         : q_ptr(q)
     {
-        const auto *const comboBoxStyleSheet{"QComboBox {combobox-popup:0;}"};
-        videoEncoderCbx = new QComboBox(q_ptr);
-        videoEncoderCbx->setView(new QListView(videoEncoderCbx));
-        videoEncoderCbx->setMaxVisibleItems(10);
-        videoEncoderCbx->setStyleSheet(comboBoxStyleSheet);
+        videoEncoderCbx = CommonWidgets::createComboBox(q_ptr);
         auto videoCodecs = Ffmpeg::getCodecsInfo(AVMEDIA_TYPE_VIDEO, true);
         for (const auto &codec : std::as_const(videoCodecs)) {
             videoEncoderCbx->addItem(codec.displayName, QVariant::fromValue(codec));
@@ -111,7 +108,7 @@ public:
     QSpinBox *maxBitrateSbx;
     QSpinBox *bitrateSbx;
 
-    QSize originalSize;
+    Ffmpeg::EncodeContext decodeContext;
 };
 
 VideoEncoderWidget::VideoEncoderWidget(QWidget *parent)
@@ -127,20 +124,25 @@ VideoEncoderWidget::~VideoEncoderWidget() = default;
 
 auto VideoEncoderWidget::encodeContext() const -> Ffmpeg::EncodeContext
 {
-    Ffmpeg::EncodeContext encodeParam;
-    encodeParam.mediaType = AVMEDIA_TYPE_VIDEO;
-    encodeParam.setEncoderName(d_ptr->currentCodecName());
-    encodeParam.size = {d_ptr->widthSbx->value(), d_ptr->heightSbx->value()};
-    encodeParam.gpuDecode = d_ptr->gpuDecodeCbx->isChecked();
-    encodeParam.minBitrate = d_ptr->minBitrateSbx->value();
-    encodeParam.maxBitrate = d_ptr->maxBitrateSbx->value();
-    encodeParam.bitrate = d_ptr->bitrateSbx->value();
-    encodeParam.crf = d_ptr->crfSbx->value();
-    encodeParam.preset = d_ptr->presetCbx->currentText();
-    encodeParam.tune = d_ptr->tuneCbx->currentText();
-    // encodeParam.profile = d_ptr->profileCbx->currentText();
+    Ffmpeg::EncodeContext encodeContext;
+    encodeContext.streamIndex = d_ptr->decodeContext.streamIndex;
+    encodeContext.mediaType = AVMEDIA_TYPE_VIDEO;
+    encodeContext.setEncoderName(d_ptr->currentCodecName());
+    encodeContext.size = {d_ptr->widthSbx->value(), d_ptr->heightSbx->value()};
+    encodeContext.minBitrate = d_ptr->minBitrateSbx->value();
+    encodeContext.maxBitrate = d_ptr->maxBitrateSbx->value();
+    encodeContext.bitrate = d_ptr->bitrateSbx->value();
+    encodeContext.crf = d_ptr->crfSbx->value();
+    encodeContext.preset = d_ptr->presetCbx->currentText();
+    encodeContext.tune = d_ptr->tuneCbx->currentText();
+    // encodeContext.profile = d_ptr->profileCbx->currentText();
 
-    return encodeParam;
+    return encodeContext;
+}
+
+bool VideoEncoderWidget::isGpuDecode() const
+{
+    return d_ptr->gpuDecodeCbx->isChecked();
 }
 
 void VideoEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContext &decodeContext)
@@ -158,8 +160,6 @@ void VideoEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContext &decodeCon
     d_ptr->widthSbx->blockSignals(false);
     d_ptr->heightSbx->blockSignals(false);
 
-    d_ptr->originalSize = decodeContext.size;
-
     if (decodeContext.maxBitrate <= 0) {
         d_ptr->calBitrate();
     } else {
@@ -167,6 +167,8 @@ void VideoEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContext &decodeCon
         d_ptr->maxBitrateSbx->setValue(decodeContext.maxBitrate);
         d_ptr->bitrateSbx->setValue(decodeContext.bitrate);
     }
+
+    d_ptr->decodeContext = decodeContext;
 }
 
 void VideoEncoderWidget::onEncoderChanged()
@@ -185,11 +187,11 @@ void VideoEncoderWidget::onEncoderChanged()
 
 void VideoEncoderWidget::onVideoWidthChanged()
 {
-    if (!d_ptr->aspectCheckBox->isChecked() || !d_ptr->originalSize.isValid()) {
+    if (!d_ptr->aspectCheckBox->isChecked() || !d_ptr->decodeContext.size.isValid()) {
         return;
     }
-    auto multiple = d_ptr->originalSize.width() * 1.0 / d_ptr->widthSbx->value();
-    int height = d_ptr->originalSize.height() / multiple;
+    auto multiple = d_ptr->decodeContext.size.width() * 1.0 / d_ptr->widthSbx->value();
+    int height = d_ptr->decodeContext.size.height() / multiple;
     d_ptr->heightSbx->blockSignals(true);
     d_ptr->heightSbx->setValue(height);
     d_ptr->heightSbx->blockSignals(false);
@@ -198,11 +200,11 @@ void VideoEncoderWidget::onVideoWidthChanged()
 
 void VideoEncoderWidget::onVideoHeightChanged()
 {
-    if (!d_ptr->aspectCheckBox->isChecked() || !d_ptr->originalSize.isValid()) {
+    if (!d_ptr->aspectCheckBox->isChecked() || !d_ptr->decodeContext.size.isValid()) {
         return;
     }
-    auto multiple = d_ptr->originalSize.height() * 1.0 / d_ptr->heightSbx->value();
-    int width = d_ptr->originalSize.width() / multiple;
+    auto multiple = d_ptr->decodeContext.size.height() * 1.0 / d_ptr->heightSbx->value();
+    int width = d_ptr->decodeContext.size.width() / multiple;
     d_ptr->widthSbx->blockSignals(true);
     d_ptr->widthSbx->setValue(width);
     d_ptr->widthSbx->blockSignals(false);

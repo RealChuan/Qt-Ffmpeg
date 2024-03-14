@@ -60,7 +60,7 @@ public:
         transcoder->parseInputFile();
     }
 
-    void initUI()
+    void initUI() const
     {
         QSize size;
         double frameRate = 0;
@@ -198,9 +198,20 @@ void MainWindow::onStart()
 
         d_ptr->transcoder->setInFilePath(inPath);
         d_ptr->transcoder->setOutFilePath(outPath);
-        d_ptr->transcoder->setVideoEncodeContext(d_ptr->videoEncoderWidget->encodeContext());
-        d_ptr->transcoder->setAudioEncodeContext(
-            d_ptr->audioEncoderWidget->encodeContexts().first());
+        d_ptr->transcoder->setGpuDecode(d_ptr->videoEncoderWidget->isGpuDecode());
+
+        Ffmpeg::EncodeContexts encodeContexts(d_ptr->transcoder->decodeContexts().size());
+        auto videoEncodeContexts = d_ptr->videoEncoderWidget->encodeContext();
+        auto audioEncodeContexts = d_ptr->audioEncoderWidget->encodeContexts();
+        auto subtitleEncodeContexts = d_ptr->subtitleEncoderWidget->encodeContexts();
+        encodeContexts.replace(videoEncodeContexts.streamIndex, videoEncodeContexts);
+        for (const auto &context : std::as_const(audioEncodeContexts)) {
+            encodeContexts.replace(context.streamIndex, context);
+        }
+        for (const auto &context : std::as_const(subtitleEncodeContexts)) {
+            encodeContexts.replace(context.streamIndex, context);
+        }
+        d_ptr->transcoder->setEncodeContexts(encodeContexts);
 
         if (QFile::exists(subtitlePath)) {
             d_ptr->transcoder->setSubtitleFilename(subtitlePath);
@@ -213,7 +224,6 @@ void MainWindow::onStart()
         setWindowTitle(filename);
 
         d_ptr->fpsTimer->start(1000);
-
     } else if (d_ptr->statusWidget->status() == tr("Stop")) {
         d_ptr->transcoder->stopTranscode();
         d_ptr->statusWidget->setProgress(0);

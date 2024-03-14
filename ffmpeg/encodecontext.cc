@@ -15,7 +15,7 @@ EncodeContext::EncodeContext(AVStream *stream, AVContextInfo *info)
 {
     auto *avCodecContext = info->codecCtx()->avCodecCtx();
     const auto *codec = avCodecContext->codec;
-    this->streamIndex = stream->index;
+    streamIndex = stream->index;
     mediaType = avCodecContext->codec_type;
     minBitrate = avCodecContext->rc_min_rate;
     maxBitrate = avCodecContext->rc_max_rate;
