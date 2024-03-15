@@ -72,6 +72,9 @@ public:
     void initVideoEncoderOptions(const EncodeContext &encodeContext)
     {
         double crf = encodeContext.crf;
+        if (crf == EncodeLimit::invalid_crf) {
+            return;
+        }
 
         Q_ASSERT(codecCtx->codec_type == AVMEDIA_TYPE_VIDEO);
         Q_ASSERT(crf >= EncodeLimit::crf_min && crf <= EncodeLimit::crf_max);
@@ -146,9 +149,11 @@ public:
                 av_dict_set(&encodeOptions, "qp_b", qualityB.toUtf8().data(), 0);
             }
         } else if (codecName.contains("_mf")) { // ffmpeg mf编码器
-            auto quality = QString::number(crf, 'f', 2);
+            // why quality bigger is better?
+            // https://trac.ffmpeg.org/wiki/Encode/H.264
+            int quality = qMin(100, static_cast<int>(crf * 2));
             av_dict_set(&encodeOptions, "rate_control", "quality", 0);
-            av_dict_set(&encodeOptions, "quality", quality.toUtf8().data(), 0);
+            av_dict_set(&encodeOptions, "quality", QString::number(quality).toUtf8().data(), 0);
             // av_dict_set(&encodeOptions, "hw_encoding", "1", 0);
         } else {
             codecCtx->flags |= AV_CODEC_FLAG_QSCALE;

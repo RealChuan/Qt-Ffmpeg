@@ -18,6 +18,7 @@ namespace EncodeLimit {
 
 static const int crf_min = 0;
 static const int crf_max = 51;
+static const int invalid_crf= -999;
 
 static const QStringList presets = QStringList{"ultrafast",
                                                "superfast",
@@ -64,7 +65,7 @@ struct FFMPEG_EXPORT EncodeContext
     qint64 bitrate = -1;
 
     int threadCount = -1;
-    int crf = 18;
+    int crf = 35;
 
     // video
     QSize size = {-1, -1};

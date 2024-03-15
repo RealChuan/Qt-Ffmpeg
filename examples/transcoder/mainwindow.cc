@@ -230,6 +230,8 @@ void MainWindow::onStart()
         d_ptr->statusWidget->setStatus(tr("Start"));
 
         d_ptr->fpsTimer->stop();
+
+        d_ptr->transcoder->parseInputFile();
     }
 }
 

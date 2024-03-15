@@ -15,7 +15,8 @@ extern "C" {
 
 namespace Ffmpeg {
 
-auto TranscoderContext::initFilter(const QString &filter_spec, Frame *frame) const -> bool
+auto TranscoderContext::initFilter(const QString &filter_spec,
+                                   const QSharedPointer<Frame> &framePtr) const -> bool
 {
     if (filterPtr->isInitialized()) {
         return true;
@@ -24,7 +25,7 @@ auto TranscoderContext::initFilter(const QString &filter_spec, Frame *frame) con
     auto *enc_ctx = encContextInfoPtr->codecCtx()->avCodecCtx();
     switch (decContextInfoPtr->mediaType()) {
     case AVMEDIA_TYPE_VIDEO: {
-        filterPtr->init(AVMEDIA_TYPE_VIDEO, frame);
+        filterPtr->init(AVMEDIA_TYPE_VIDEO, framePtr.data());
         auto pix_fmt = encContextInfoPtr->pixfmt();
         av_opt_set_bin(filterPtr->buffersinkCtx()->avFilterContext(),
                        "pix_fmts",
@@ -33,7 +34,7 @@ auto TranscoderContext::initFilter(const QString &filter_spec, Frame *frame) con
                        AV_OPT_SEARCH_CHILDREN);
     } break;
     case AVMEDIA_TYPE_AUDIO: {
-        filterPtr->init(AVMEDIA_TYPE_AUDIO, frame);
+        filterPtr->init(AVMEDIA_TYPE_AUDIO, framePtr.data());
         auto *avFilterContext = filterPtr->buffersinkCtx()->avFilterContext();
         av_opt_set_bin(avFilterContext,
                        "sample_rates",

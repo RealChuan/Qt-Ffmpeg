@@ -49,16 +49,26 @@ void OutPutWidget::onBrowse()
     d_ptr->outLineEdit->setText(filePath);
 }
 
+void OutPutWidget::onOpenFolder()
+{
+    auto path = d_ptr->outLineEdit->text().trimmed();
+    QDesktopServices::openUrl(QUrl(QFileInfo(path).absolutePath()));
+}
+
 void OutPutWidget::setupUI()
 {
-    auto *button = new QToolButton(this);
-    button->setText(tr("Browse"));
-    connect(button, &QToolButton::clicked, this, &OutPutWidget::onBrowse);
+    auto *browseButton = new QToolButton(this);
+    browseButton->setText(tr("Browse"));
+    connect(browseButton, &QToolButton::clicked, this, &OutPutWidget::onBrowse);
+    auto *openButton = new QToolButton(this);
+    openButton->setText(tr("Open Folder"));
+    connect(openButton, &QToolButton::clicked, this, &OutPutWidget::onOpenFolder);
 
     auto *layout = new QHBoxLayout(this);
     layout->addWidget(new QLabel(tr("Save File:"), this));
     layout->addWidget(d_ptr->outLineEdit);
-    layout->addWidget(button);
+    layout->addWidget(browseButton);
+    layout->addWidget(openButton);
 }
 
 void OutPutWidget::buildConnect() {}

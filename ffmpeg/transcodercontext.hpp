@@ -12,7 +12,8 @@ class AudioFifo;
 
 struct TranscoderContext
 {
-    auto initFilter(const QString &filter_spec, Frame *frame) const -> bool;
+    [[nodiscard]] auto initFilter(const QString &filter_spec,
+                                  const QSharedPointer<Frame> &framePtr) const -> bool;
 
     QSharedPointer<AVContextInfo> decContextInfoPtr;
     QSharedPointer<AVContextInfo> encContextInfoPtr;

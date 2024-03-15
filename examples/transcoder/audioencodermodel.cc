@@ -22,6 +22,8 @@ public:
     QStringList headers;
 
     QIcon removeIcon = qApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton);
+
+    const int bitrateOffset = 1000;
 };
 
 AudioEncoderModel::AudioEncoderModel(QObject *parent)
@@ -118,7 +120,9 @@ auto AudioEncoderModel::setData(const QModelIndex &index, const QVariant &value,
             }
         } break;
         case Property::Bitrate:
-            data.maxBitrate = data.minBitrate = data.bitrate = value.toInt();
+            data.bitrate = value.toInt();
+            data.minBitrate = qMax(0, data.bitrate - d_ptr->bitrateOffset);
+            data.maxBitrate = data.bitrate + d_ptr->bitrateOffset;
             emit dataChanged(index, index);
             break;
         case Property::SampleRate:

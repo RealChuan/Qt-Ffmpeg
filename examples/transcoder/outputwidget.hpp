@@ -15,6 +15,7 @@ public:
 
 private slots:
     void onBrowse();
+    void onOpenFolder();
 
 private:
     void setupUI();

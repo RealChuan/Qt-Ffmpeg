@@ -19,12 +19,13 @@ public:
     void setDecodeContext(const Ffmpeg::EncodeContext &decodeContext);
     [[nodiscard]] auto encodeContext() const -> Ffmpeg::EncodeContext;
 
-    bool isGpuDecode() const;
+    [[nodiscard]] auto isGpuDecode() const -> bool;
 
 private slots:
     void onEncoderChanged();
     void onVideoWidthChanged();
     void onVideoHeightChanged();
+    void onQualityTypeChanged();
 
 private:
     void setupUI();

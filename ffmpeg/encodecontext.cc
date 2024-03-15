@@ -13,6 +13,7 @@ namespace Ffmpeg {
 
 EncodeContext::EncodeContext(AVStream *stream, AVContextInfo *info)
 {
+    auto *codecpar = stream->codecpar;
     auto *avCodecContext = info->codecCtx()->avCodecCtx();
     const auto *codec = avCodecContext->codec;
     streamIndex = stream->index;
@@ -21,10 +22,19 @@ EncodeContext::EncodeContext(AVStream *stream, AVContextInfo *info)
     maxBitrate = avCodecContext->rc_max_rate;
     bitrate = avCodecContext->bit_rate;
     if (bitrate <= 0) {
+        bitrate = codecpar->bit_rate;
+    }
+    if (bitrate <= 0 && mediaType == AVMEDIA_TYPE_AUDIO) {
         bitrate = 512000;
     }
     size = {avCodecContext->width, avCodecContext->height};
+    if (!size.isValid()) {
+        size = {codecpar->width, codecpar->height};
+    }
     sampleRate = avCodecContext->sample_rate;
+    if (sampleRate <= 0) {
+        sampleRate = codecpar->sample_rate;
+    }
 
     if (!setEncoderName(QString::fromUtf8(codec->name))) {
         setEncoderName(codec->id);

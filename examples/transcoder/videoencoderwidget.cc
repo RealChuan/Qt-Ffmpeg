@@ -28,17 +28,58 @@ public:
                                      q_ptr);
         gpuDecodeCbx->setChecked(true);
 
+        initInvailedGroupBox();
+        initCrf();
+        initBitrateGroupBox();
+        initSizeGroupBox();
+
+        init();
+    }
+
+    void initInvailedGroupBox()
+    {
+        presetCbx = CommonWidgets::createComboBox(q_ptr);
+        tuneCbx = CommonWidgets::createComboBox(q_ptr);
+        profileCbx = CommonWidgets::createComboBox(q_ptr);
+    }
+
+    void initCrf()
+    {
+        crfRadioButton = new QRadioButton(QCoreApplication::translate("VideoEncoderWidgetPrivate",
+                                                                      "Crf:"),
+                                          q_ptr);
         crfSbx = new QSpinBox(q_ptr);
         crfSbx->setToolTip(
-            QCoreApplication::translate("VideoEncoderWidgetPrivate", "smaller -> better"));
+            QCoreApplication::translate("VideoEncoderWidgetPrivate", "bigger -> better"));
+    }
 
-        presetCbx = new QComboBox(q_ptr);
-        presetCbx->setView(new QListView(presetCbx));
-        tuneCbx = new QComboBox(q_ptr);
-        tuneCbx->setView(new QListView(tuneCbx));
-        profileCbx = new QComboBox(q_ptr);
-        profileCbx->setView(new QListView(profileCbx));
+    void initBitrateGroupBox()
+    {
+        bitrateRadioButton
+            = new QRadioButton(QCoreApplication::translate("VideoEncoderWidgetPrivate", "Bitrate:"),
+                               q_ptr);
+        bitrateWidget = new QWidget(q_ptr);
+        minBitrateSbx = new QSpinBox(q_ptr);
+        minBitrateSbx->setRange(0, INT_MAX);
+        bitrateSbx = new QSpinBox(q_ptr);
+        bitrateSbx->setRange(0, INT_MAX);
+        maxBitrateSbx = new QSpinBox(q_ptr);
+        maxBitrateSbx->setRange(0, INT_MAX);
 
+        auto *bitrateLayout = new QFormLayout(bitrateWidget);
+        bitrateLayout->setContentsMargins(QMargins());
+        bitrateLayout->addRow(QCoreApplication::translate("VideoEncoderWidgetPrivate",
+                                                          "Min Bitrate:"),
+                              minBitrateSbx);
+        bitrateLayout->addRow(QCoreApplication::translate("VideoEncoderWidgetPrivate", "Bitrate:"),
+                              bitrateSbx);
+        bitrateLayout->addRow(QCoreApplication::translate("VideoEncoderWidgetPrivate",
+                                                          "Max Bitrate:"),
+                              maxBitrateSbx);
+    }
+
+    void initSizeGroupBox()
+    {
         widthSbx = new QSpinBox(q_ptr);
         widthSbx->setRange(0, INT_MAX);
         heightSbx = new QSpinBox(q_ptr);
@@ -47,15 +88,6 @@ public:
                                                                    "Keep aspect ratio:"),
                                        q_ptr);
         aspectCheckBox->setChecked(true);
-
-        minBitrateSbx = new QSpinBox(q_ptr);
-        minBitrateSbx->setRange(0, INT_MAX);
-        maxBitrateSbx = new QSpinBox(q_ptr);
-        maxBitrateSbx->setRange(0, INT_MAX);
-        bitrateSbx = new QSpinBox(q_ptr);
-        bitrateSbx->setRange(0, INT_MAX);
-
-        init();
     }
 
     void calBitrate() const
@@ -95,18 +127,22 @@ public:
     QComboBox *videoEncoderCbx;
     QCheckBox *gpuDecodeCbx;
 
+    QRadioButton *crfRadioButton;
     QSpinBox *crfSbx;
-    QComboBox *presetCbx;
-    QComboBox *tuneCbx;
-    QComboBox *profileCbx;
+
+    QRadioButton *bitrateRadioButton;
+    QWidget *bitrateWidget;
+    QSpinBox *minBitrateSbx;
+    QSpinBox *bitrateSbx;
+    QSpinBox *maxBitrateSbx;
 
     QSpinBox *widthSbx;
     QSpinBox *heightSbx;
     QCheckBox *aspectCheckBox;
 
-    QSpinBox *minBitrateSbx;
-    QSpinBox *maxBitrateSbx;
-    QSpinBox *bitrateSbx;
+    QComboBox *presetCbx;
+    QComboBox *tuneCbx;
+    QComboBox *profileCbx;
 
     Ffmpeg::EncodeContext decodeContext;
 };
@@ -118,6 +154,7 @@ VideoEncoderWidget::VideoEncoderWidget(QWidget *parent)
     setupUI();
     buildConnect();
     onEncoderChanged();
+    d_ptr->crfRadioButton->click();
 }
 
 VideoEncoderWidget::~VideoEncoderWidget() = default;
@@ -132,7 +169,8 @@ auto VideoEncoderWidget::encodeContext() const -> Ffmpeg::EncodeContext
     encodeContext.minBitrate = d_ptr->minBitrateSbx->value();
     encodeContext.maxBitrate = d_ptr->maxBitrateSbx->value();
     encodeContext.bitrate = d_ptr->bitrateSbx->value();
-    encodeContext.crf = d_ptr->crfSbx->value();
+    encodeContext.crf = d_ptr->crfRadioButton->isChecked() ? d_ptr->crfSbx->value()
+                                                           : Ffmpeg::EncodeLimit::invalid_crf;
     encodeContext.preset = d_ptr->presetCbx->currentText();
     encodeContext.tune = d_ptr->tuneCbx->currentText();
     // encodeContext.profile = d_ptr->profileCbx->currentText();
@@ -160,12 +198,16 @@ void VideoEncoderWidget::setDecodeContext(const Ffmpeg::EncodeContext &decodeCon
     d_ptr->widthSbx->blockSignals(false);
     d_ptr->heightSbx->blockSignals(false);
 
-    if (decodeContext.maxBitrate <= 0) {
+    if (decodeContext.bitrate <= 0) {
         d_ptr->calBitrate();
     } else {
-        d_ptr->minBitrateSbx->setValue(decodeContext.minBitrate);
-        d_ptr->maxBitrateSbx->setValue(decodeContext.maxBitrate);
         d_ptr->bitrateSbx->setValue(decodeContext.bitrate);
+        if (decodeContext.maxBitrate <= 0) {
+            d_ptr->maxBitrateSbx->setValue(decodeContext.bitrate);
+        }
+        if (decodeContext.minBitrate <= 0) {
+            d_ptr->minBitrateSbx->setValue(decodeContext.bitrate);
+        }
     }
 
     d_ptr->decodeContext = decodeContext;
@@ -211,6 +253,13 @@ void VideoEncoderWidget::onVideoHeightChanged()
     d_ptr->calBitrate();
 }
 
+void VideoEncoderWidget::onQualityTypeChanged()
+{
+    auto enabled = d_ptr->crfRadioButton->isChecked();
+    d_ptr->crfSbx->setEnabled(enabled);
+    d_ptr->bitrateWidget->setEnabled(!enabled);
+}
+
 void VideoEncoderWidget::setupUI()
 {
     auto *codecLayout = new QHBoxLayout;
@@ -220,30 +269,28 @@ void VideoEncoderWidget::setupUI()
     codecLayout->addStretch();
     codecLayout->addWidget(d_ptr->gpuDecodeCbx);
 
-    auto *invailedGroupBox = new QGroupBox(tr("Invalid setting"), this);
-    auto *invailedLayout = new QFormLayout(invailedGroupBox);
-    invailedLayout->addRow(tr("Crf:"), d_ptr->crfSbx);
-    invailedLayout->addRow(tr("Preset:"), d_ptr->presetCbx);
-    invailedLayout->addRow(tr("Tune:"), d_ptr->tuneCbx);
-    invailedLayout->addRow(tr("Profile:"), d_ptr->profileCbx);
-
     auto *sizeGroupBox = new QGroupBox(tr("Size"), this);
     auto *sizeLayout = new QFormLayout(sizeGroupBox);
     sizeLayout->addRow(tr("Width:"), d_ptr->widthSbx);
     sizeLayout->addRow(tr("Height:"), d_ptr->heightSbx);
     sizeLayout->addRow(d_ptr->aspectCheckBox);
 
-    auto *bitrateGroupBox = new QGroupBox(tr("Bitrate"), this);
-    auto *bitrateLayout = new QFormLayout(bitrateGroupBox);
-    bitrateLayout->addRow(tr("Min Bitrate:"), d_ptr->minBitrateSbx);
-    bitrateLayout->addRow(tr("Max Bitrate:"), d_ptr->maxBitrateSbx);
-    bitrateLayout->addRow(tr("Bitrate:"), d_ptr->bitrateSbx);
+    auto *invailedGroupBox = new QGroupBox(tr("Invalid setting"), this);
+    auto *invailedLayout = new QFormLayout(invailedGroupBox);
+    invailedLayout->addRow(tr("Preset:"), d_ptr->presetCbx);
+    invailedLayout->addRow(tr("Tune:"), d_ptr->tuneCbx);
+    invailedLayout->addRow(tr("Profile:"), d_ptr->profileCbx);
+
+    auto *qualityGroupBox = new QGroupBox(tr("Quality"), this);
+    auto *qualityLayout = new QFormLayout(qualityGroupBox);
+    qualityLayout->addRow(d_ptr->crfRadioButton, d_ptr->crfSbx);
+    qualityLayout->addRow(d_ptr->bitrateRadioButton, d_ptr->bitrateWidget);
 
     auto *layout = new QGridLayout(this);
     layout->addLayout(codecLayout, 0, 0, 1, 2);
-    layout->addWidget(invailedGroupBox, 1, 0, 2, 1);
-    layout->addWidget(sizeGroupBox, 1, 1, 1, 1);
-    layout->addWidget(bitrateGroupBox, 2, 1, 1, 1);
+    layout->addWidget(sizeGroupBox, 1, 0, 1, 1);
+    layout->addWidget(qualityGroupBox, 2, 0, 1, 1);
+    layout->addWidget(invailedGroupBox, 1, 1, 2, 1);
 }
 
 void VideoEncoderWidget::buildConnect()
@@ -264,4 +311,10 @@ void VideoEncoderWidget::buildConnect()
             &QCheckBox::stateChanged,
             this,
             &VideoEncoderWidget::onVideoWidthChanged);
+
+    auto *buttonGroup = new QButtonGroup(this);
+    buttonGroup->setExclusive(true);
+    buttonGroup->addButton(d_ptr->crfRadioButton);
+    buttonGroup->addButton(d_ptr->bitrateRadioButton);
+    connect(buttonGroup, &QButtonGroup::idClicked, this, &VideoEncoderWidget::onQualityTypeChanged);
 }
